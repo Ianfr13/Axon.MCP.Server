@@ -4,6 +4,7 @@ on:
   push:
     branches: [ public-release ]
     tags: [ 'v*' ]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -71,3 +72,15 @@ jobs:
           push: true
           tags: ${{ steps.meta_ui.outputs.tags }}
           labels: ${{ steps.meta_ui.outputs.labels }}
+          build-args: |
+            VITE_API_BASE_URL=/
+
+      # Trigger Kestra deployment on prod
+      - name: Trigger Kestra Deploy
+        if: github.ref == 'refs/heads/public-release'
+        run: |
+          curl -sf -X POST \
+            "${{ secrets.KESTRA_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"commit_sha\":\"${{ github.sha }}\",\"actor\":\"${{ github.actor }}\",\"image_tag\":\"latest\"}" \
+          || echo "Kestra webhook not configured yet — skipping deploy trigger"
