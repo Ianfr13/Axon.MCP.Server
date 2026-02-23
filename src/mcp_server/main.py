@@ -7,7 +7,7 @@ Supported transports:
     - stdio: Standard I/O (default, for local MCP clients)
     - http: Custom HTTP/JSON-RPC via FastAPI (legacy)
     - sse: Server-Sent Events using the native mcp library transport
-           Exposes GET /sse (SSE stream) and POST /messages (client messages)
+    - streamable-http: Streamable HTTP (recommended for Claude Code)
 """
 
 import asyncio
@@ -22,17 +22,72 @@ configure_logging()
 logger = get_logger(__name__)
 
 
-def create_sse_app():
-    """Create a Starlette ASGI app with the native MCP SSE transport.
+def create_streamable_http_app():
+    """Create a Starlette ASGI app with MCP streamable-http transport.
 
-    This uses the mcp library's built-in SseServerTransport which handles
-    the full MCP protocol over SSE, including:
-    - GET /sse: Establishes an SSE stream for server-to-client messages
-    - POST /messages: Receives client-to-server JSON-RPC messages
+    Uses StreamableHTTPSessionManager which handles:
+    - POST /mcp: JSON-RPC requests with streaming responses
+    - GET /mcp: SSE stream for server-initiated messages
+    - DELETE /mcp: Session termination
 
-    The transport is stateless regarding auth — MCP_AUTH_ENABLED=false
-    (default) allows unauthenticated connections for Claude Code compatibility.
+    This is the recommended transport for remote MCP connections.
     """
+    import contextlib
+
+    from starlette.applications import Starlette
+    from starlette.middleware import Middleware
+    from starlette.middleware.cors import CORSMiddleware
+    from starlette.routing import Route
+    from starlette.requests import Request
+    from starlette.responses import JSONResponse
+
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+
+    from src.mcp_server.server import mcp as mcp_server_instance
+
+    settings = get_settings()
+
+    session_manager = StreamableHTTPSessionManager(
+        app=mcp_server_instance,
+        json_response=False,
+        stateless=True,
+    )
+
+    @contextlib.asynccontextmanager
+    async def lifespan(app):
+        async with session_manager.run():
+            yield
+
+    async def handle_health(request: Request):
+        return JSONResponse({"status": "ok", "transport": "streamable-http", "server": "axon-mcp-server"})
+
+    async def handle_mcp_request(request: Request):
+        """Route handler that delegates to StreamableHTTPSessionManager."""
+        await session_manager.handle_request(request.scope, request.receive, request._send)
+
+    app = Starlette(
+        debug=settings.debug,
+        lifespan=lifespan,
+        routes=[
+            Route("/health", endpoint=handle_health),
+            Route("/mcp", endpoint=handle_mcp_request, methods=["GET", "POST", "DELETE"]),
+        ],
+        middleware=[
+            Middleware(
+                CORSMiddleware,
+                allow_origins=["*"],
+                allow_credentials=True,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            ),
+        ],
+    )
+
+    return app
+
+
+def create_sse_app():
+    """Create a Starlette ASGI app with the native MCP SSE transport."""
     from starlette.applications import Starlette
     from starlette.middleware import Middleware
     from starlette.middleware.cors import CORSMiddleware
@@ -46,18 +101,9 @@ def create_sse_app():
 
     settings = get_settings()
 
-    # Create SSE transport — the endpoint arg is the relative path where
-    # the client should POST messages back (sent via the initial SSE event).
-    sse_transport = SseServerTransport(
-        settings.mcp_sse_messages_path,
-    )
+    sse_transport = SseServerTransport(settings.mcp_sse_messages_path)
 
     async def handle_sse(request: Request):
-        """Handle SSE connection requests (GET /sse).
-
-        Each connection creates a new MCP session with its own read/write
-        streams. The server runs the full MCP protocol over these streams.
-        """
         logger.info("mcp_sse_client_connected", client=request.client.host if request.client else "unknown")
         async with sse_transport.connect_sse(
             request.scope, request.receive, request._send
@@ -69,10 +115,8 @@ def create_sse_app():
             )
 
     async def handle_health(request: Request):
-        """Simple health check endpoint for the SSE server."""
         return JSONResponse({"status": "ok", "transport": "sse", "server": "axon-mcp-server"})
 
-    # Build the Starlette app with the two SSE routes
     app = Starlette(
         debug=settings.debug,
         routes=[
@@ -83,7 +127,7 @@ def create_sse_app():
         middleware=[
             Middleware(
                 CORSMiddleware,
-                allow_origins=settings.api_cors_origins,
+                allow_origins=["*"],
                 allow_credentials=True,
                 allow_methods=["*"],
                 allow_headers=["*"],
@@ -101,22 +145,30 @@ def main():
     try:
         transport = get_settings().mcp_transport
 
-        if transport == "sse":
-            # Run SSE transport using native mcp library SseServerTransport
+        if transport == "streamable-http":
+            logger.info(
+                "starting_mcp_streamable_http_server",
+                host=get_settings().mcp_http_host,
+                port=get_settings().mcp_http_port,
+            )
+            AxonMCPServer()
+            app = create_streamable_http_app()
+            uvicorn.run(
+                app,
+                host=get_settings().mcp_http_host,
+                port=get_settings().mcp_http_port,
+                log_level=get_settings().log_level.lower(),
+                access_log=True,
+            )
+
+        elif transport == "sse":
             logger.info(
                 "starting_mcp_sse_server",
                 host=get_settings().mcp_http_host,
                 port=get_settings().mcp_http_port,
-                sse_path=get_settings().mcp_sse_path,
-                messages_path=get_settings().mcp_sse_messages_path,
             )
-
-            # Initialize the AxonMCPServer to register tools/resources
-            # (this populates the module-level mcp server instance via decorators)
             AxonMCPServer()
-
             app = create_sse_app()
-
             uvicorn.run(
                 app,
                 host=get_settings().mcp_http_host,
@@ -126,16 +178,12 @@ def main():
             )
 
         elif transport == "http":
-            # Run HTTP transport via FastAPI (legacy custom JSON-RPC)
             logger.info(
                 "starting_mcp_http_server",
                 host=get_settings().mcp_http_host,
                 port=get_settings().mcp_http_port,
             )
-
-            # Import the FastAPI app that includes MCP HTTP routes
             from src.api.main import app
-
             uvicorn.run(
                 app,
                 host=get_settings().mcp_http_host,
