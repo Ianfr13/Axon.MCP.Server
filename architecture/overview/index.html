@@ -1,0 +1,2309 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Model Context Protocol (MCP) Server for AI IDEs">
+      
+      
+        <meta name="author" content="Ali Kamali">
+      
+      
+        <link rel="canonical" href="https://ali-kamali.github.io/Axon.MCP.Server/architecture/overview/">
+      
+      
+        <link rel="prev" href="../../product_vision/">
+      
+      
+        <link rel="next" href="../data_models/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.13">
+    
+    
+      
+        <title>Overview - Axon MCP Server</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.7e359304.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#system-architecture-overview" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Axon MCP Server" class="md-header__button md-logo" aria-label="Axon MCP Server" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Axon MCP Server
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ali-kamali/Axon.MCP.Server" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ali-kamali/Axon.MCP.Server
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../product_vision/" class="md-tabs__link">
+        
+  
+    
+  
+  Product Vision
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/mcp_tools/" class="md-tabs__link">
+          
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/setup/" class="md-tabs__link">
+          
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reference/configuration/" class="md-tabs__link">
+          
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../AXON_ANALYSIS_AND_ROADMAP/" class="md-tabs__link">
+        
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Axon MCP Server" class="md-nav__button md-logo" aria-label="Axon MCP Server" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Axon MCP Server
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ali-kamali/Axon.MCP.Server" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ali-kamali/Axon.MCP.Server
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../product_vision/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Product Vision
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Architecture
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      📋 Executive Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🏗️ High-Level Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ High-Level Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-components-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      System Components Diagram
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technology-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Technology Stack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔧 Technology Stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backend Stack
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Frontend Stack
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Infrastructure
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      📦 Core Components
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📦 Core Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-api-layer-srcapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. API Layer (src/api)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-mcp-server-srcmcp_server" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. MCP Server (src/mcp_server)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-workers-srcworkers" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Workers (src/workers)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-analysis-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Analysis Layer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Analysis Layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-tree-sitter-parsers-srcparsers" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.1 Tree-sitter Parsers (src/parsers)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-roslyn-analyzer-roslyn_analyzer" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.2 Roslyn Analyzer (roslyn_analyzer/)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-knowledge-extractor-srcextractors" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.3 Knowledge Extractor (src/extractors)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-ef-core-analyzer-srcanalyzers" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.4 EF Core Analyzer (src/analyzers)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-data-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Data Layer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Data Layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-database-srcdatabase" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Database (src/database)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-redis-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Redis Cache
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-embeddings-srcembeddings" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Embeddings (src/embeddings)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#processing-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Processing Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Processing Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-steps-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Steps Detail
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐳 Deployment Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🐳 Deployment Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-services-10-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docker Services (10 Containers)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔍 Search Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔍 Search Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hybrid-search-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hybrid Search Flow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Search Strategies
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔐 Security Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔐 Security Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#authentication-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication Flow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-observability" class="md-nav__link">
+    <span class="md-ellipsis">
+      📊 Monitoring &amp; Observability
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 Monitoring & Observability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metrics-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics Stack
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-control-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      🌐 Source Control Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🌐 Source Control Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gitlab-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitLab Integration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#azure-devops-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Azure DevOps Integration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#future-architecture-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔮 Future Architecture Enhancements
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔮 Future Architecture Enhancements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#planned-improvements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Planned Improvements
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      📖 Additional Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data_models/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Models
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Infrastructure
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../infrastructure_analysis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Infrastructure Analysis
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/mcp_tools/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    MCP Tools
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/rest_api/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    REST API
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/development/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Development
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/deployment/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Deployment
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/configuration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/troubleshooting/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Troubleshooting
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AXON_ANALYSIS_AND_ROADMAP/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Roadmap
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#executive-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      📋 Executive Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🏗️ High-Level Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🏗️ High-Level Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-components-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      System Components Diagram
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technology-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔧 Technology Stack
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔧 Technology Stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Backend Stack
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Frontend Stack
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Infrastructure
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      📦 Core Components
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📦 Core Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-api-layer-srcapi" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. API Layer (src/api)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-mcp-server-srcmcp_server" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. MCP Server (src/mcp_server)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-workers-srcworkers" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Workers (src/workers)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-analysis-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Analysis Layer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Analysis Layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-tree-sitter-parsers-srcparsers" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.1 Tree-sitter Parsers (src/parsers)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-roslyn-analyzer-roslyn_analyzer" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.2 Roslyn Analyzer (roslyn_analyzer/)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-knowledge-extractor-srcextractors" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.3 Knowledge Extractor (src/extractors)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-ef-core-analyzer-srcanalyzers" class="md-nav__link">
+    <span class="md-ellipsis">
+      4.4 EF Core Analyzer (src/analyzers)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-data-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Data Layer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Data Layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-database-srcdatabase" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.1 Database (src/database)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-redis-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      5.2 Redis Cache
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-embeddings-srcembeddings" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Embeddings (src/embeddings)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#processing-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      ⚙️ Processing Pipeline
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚙️ Processing Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-steps-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pipeline Steps Detail
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🐳 Deployment Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🐳 Deployment Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#docker-services-10-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Docker Services (10 Containers)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔍 Search Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔍 Search Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hybrid-search-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Hybrid Search Flow
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Search Strategies
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔐 Security Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔐 Security Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#authentication-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Authentication Flow
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#monitoring-observability" class="md-nav__link">
+    <span class="md-ellipsis">
+      📊 Monitoring &amp; Observability
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="📊 Monitoring & Observability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metrics-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metrics Stack
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-control-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      🌐 Source Control Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🌐 Source Control Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#gitlab-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      GitLab Integration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#azure-devops-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Azure DevOps Integration
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#future-architecture-enhancements" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔮 Future Architecture Enhancements
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔮 Future Architecture Enhancements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#planned-improvements" class="md-nav__link">
+    <span class="md-ellipsis">
+      Planned Improvements
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additional-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      📖 Additional Resources
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="system-architecture-overview">System Architecture Overview</h1>
+<h2 id="executive-summary">📋 Executive Summary</h2>
+<p>Axon.MCP.Server is a sophisticated <strong>AI-powered code intelligence platform</strong> built on a modern microservices architecture. It combines <strong>FastAPI</strong> (REST API), <strong>Model Context Protocol</strong> (AI integration), <strong>Celery</strong> (distributed processing), and a <strong>hybrid analysis engine</strong> (Tree-sitter + Roslyn) to transform codebases into queryable knowledge bases.</p>
+<hr />
+<h2 id="high-level-architecture">🏗️ High-Level Architecture</h2>
+<h3 id="system-components-diagram">System Components Diagram</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>graph TB
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    subgraph &quot;Client Layer&quot;
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>        A1[AI Assistants&lt;br/&gt;ChatGPT/Claude/Cursor]
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>        A2[React Dashboard&lt;br/&gt;Port 80]
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        A3[REST Clients&lt;br/&gt;External Tools]
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    end
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    subgraph &quot;API Layer&quot;
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        B1[MCP Server&lt;br/&gt;:8001]
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        B2[REST API&lt;br/&gt;:8080]
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    end
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    subgraph &quot;Processing Layer&quot;
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        C1[Celery Worker&lt;br/&gt;Repository Sync]
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        C2[Enrichment Worker&lt;br/&gt;AI Analysis - 8 concurrency]
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        C3[Beat Scheduler&lt;br/&gt;Periodic Tasks]
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    end
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    subgraph &quot;Analysis Layer&quot;
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>        D1[Tree-sitter Parsers&lt;br/&gt;Python, JS, TS, C#]
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>        D2[Roslyn Analyzer&lt;br/&gt;C# Semantic Analysis]
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>        D3[EF Core Analyzer&lt;br/&gt;Entity Detection]
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>        D4[Knowledge Extractor&lt;br/&gt;Call Graph, Patterns]
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    end
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    subgraph &quot;Data Layer&quot;
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        E1[(PostgreSQL + pgvector&lt;br/&gt;:5432)]
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>        E2[(Redis&lt;br/&gt;Cache/Queue :6379)]
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    end
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    subgraph &quot;Monitoring&quot;
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>        F1[Prometheus&lt;br/&gt;:9090]
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>        F2[Grafana&lt;br/&gt;:3000]
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    end
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    subgraph &quot;Source Control&quot;
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>        G1[GitLab API]
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>        G2[Azure DevOps API]
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    end
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>    A1 --&gt; B1
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>    A2 --&gt; B2
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>    A3 --&gt; B2
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>    B1 --&gt; E1
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>    B2 --&gt; E1
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>    B2 --&gt; E2
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>    B2 --&gt; C1
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>    C1 --&gt; D1
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>    C1 --&gt; D2
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>    C1 --&gt; D3
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>    C1 --&gt; D4
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>    C2 --&gt; E1
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>    C1 --&gt; E1
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>    C1 --&gt; E2
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>    D2 --&gt; E1
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>    G1 --&gt; C1
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    G2 --&gt; C1
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>    B2 --&gt; F1
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>    F1 --&gt; F2
+</code></pre></div>
+<hr />
+<h2 id="technology-stack">🔧 Technology Stack</h2>
+<h3 id="backend-stack">Backend Stack</h3>
+<ul>
+<li><strong>Web Framework</strong>: FastAPI 0.110.0 (async, high-performance)</li>
+<li><strong>Background Processing</strong>: Celery 5.3.6 + Redis</li>
+<li><strong>Database ORM</strong>: SQLAlchemy 2.0.29 (async)</li>
+<li><strong>Authentication</strong>: PyJWT 2.10.1, python-jose 3.3.0</li>
+<li><strong>Code Parsing</strong>:</li>
+<li>Tree-sitter 0.25.0+ (Python, JS, TS, C#)</li>
+<li>Roslyn (C# semantic analysis via subprocess)</li>
+<li><strong>Embeddings</strong>:</li>
+<li>Local: sentence-transformers 2.5.1+</li>
+<li>Cloud: OpenAI API 1.14.0</li>
+<li><strong>LLM Integration</strong>: OpenRouter/Ollama/OpenAI</li>
+<li><strong>Monitoring</strong>: Prometheus 0.20.0, structlog 24.1.0</li>
+</ul>
+<h3 id="frontend-stack">Frontend Stack</h3>
+<ul>
+<li><strong>Framework</strong>: React 18 + TypeScript</li>
+<li><strong>Build Tool</strong>: Vite 5</li>
+<li><strong>Styling</strong>: Custom CSS with dark theme</li>
+<li><strong>State Management</strong>: React hooks + Context API</li>
+</ul>
+<h3 id="infrastructure">Infrastructure</h3>
+<ul>
+<li><strong>Database</strong>: PostgreSQL 15 + pgvector extension</li>
+<li><strong>Cache/Queue</strong>: Redis 7</li>
+<li><strong>Container</strong>: Docker + Docker Compose</li>
+<li><strong>Monitoring</strong>: Prometheus + Grafana</li>
+<li><strong>Migrations</strong>: Alembic 1.13.1</li>
+</ul>
+<hr />
+<h2 id="core-components">📦 Core Components</h2>
+<h3 id="1-api-layer-srcapi">1. API Layer (<code>src/api</code>)</h3>
+<p><strong>Purpose</strong>: REST API endpoints for UI and external integrations</p>
+<p><strong>Key Files</strong>:
+- <a href="file:///e:/Health/Axon.MCP.Server/src/api/main.py">main.py</a> - FastAPI application entry point
+- <a href="file:///e:/Health/Axon.MCP.Server/src/api/auth.py">auth.py</a> - JWT + API Key authentication
+- <code>routes/</code> - API endpoint handlers</p>
+<p><strong>Responsibilities</strong>:
+- Handle HTTP requests
+- JWT authentication and authorization
+- Rate limiting (SlowAPI)
+- Request validation (Pydantic)
+- Response formatting</p>
+<p><strong>Authentication Flow</strong>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>sequenceDiagram
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    participant C as Client
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    participant A as API
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    participant D as Database
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    C-&gt;&gt;A: POST /auth/login {username, password}
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    A-&gt;&gt;D: Verify credentials
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    D--&gt;&gt;A: User data
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    A-&gt;&gt;A: Generate JWT token
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    A--&gt;&gt;C: Set HTTP-only cookie + token
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    C-&gt;&gt;A: GET /api/v1/repositories (with cookie)
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    A-&gt;&gt;A: Validate JWT
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>    A-&gt;&gt;D: Query repositories
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>    D--&gt;&gt;A: Repository list
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>    A--&gt;&gt;C: JSON response
+</code></pre></div></p>
+<hr />
+<h3 id="2-mcp-server-srcmcp_server">2. MCP Server (<code>src/mcp_server</code>)</h3>
+<p><strong>Purpose</strong>: Model Context Protocol server for AI assistant integration</p>
+<p><strong>Key Files</strong>:
+- <a href="file:///e:/Health/Axon.MCP.Server/src/mcp_server/server.py">server.py</a> - MCP protocol implementation
+- <code>tools/</code> - 12 MCP tools for AI assistants
+- <code>resources/</code> - MCP resource handlers</p>
+<p><strong>12 Available Tools</strong>:
+1. <code>search</code> - Semantic + full-text code search
+2. <code>get_symbol_details</code> - Detailed symbol information
+3. <code>get_call_graph</code> - Function call relationships
+4. <code>get_inheritance_hierarchy</code> - Class inheritance tree
+5. <code>get_module_summary</code> - AI-generated code summaries
+6. <code>get_file_symbols</code> - List symbols in a file
+7. <code>get_repository_structure</code> - Project/solution organization
+8. <code>get_api_endpoints</code> - List REST API routes
+9. <code>get_ef_entities</code> - Entity Framework mappings
+10. <code>explore_service</code> - Navigate service architecture
+11. <code>find_implementations</code> - Interface implementations
+12. <code>get_system_architecture_map</code> - Architecture diagrams</p>
+<p><strong>Transport Modes</strong>:
+- <strong>HTTP</strong> (default): <code>http://localhost:8001</code> - For remote AI clients
+- <strong>Stdio</strong>: Standard input/output - For local Claude Desktop</p>
+<hr />
+<h3 id="3-workers-srcworkers">3. Workers (<code>src/workers</code>)</h3>
+<p><strong>Purpose</strong>: Distributed background processing with Celery</p>
+<p><strong>Key Files</strong>:
+- <a href="file:///e:/Health/Axon.MCP.Server/src/workers/celery_app.py">celery_app.py</a> - Celery configuration
+- <a href="file:///e:/Health/Axon.MCP.Server/src/workers/sync_worker.py">sync_worker.py</a> - Main repository sync orchestrator (605 lines)</p>
+<p><strong>Worker Types</strong>:
+- <strong>Core Worker</strong> (1 concurrency): CPU-bound tasks (parsing, cloning)
+- <strong>Enrichment Worker</strong> (8 concurrency): IO-bound tasks (LLM calls)
+- <strong>Beat Scheduler</strong>: Periodic tasks (auto-sync, cleanup)</p>
+<p><strong>Queues</strong>:
+- <code>repository_sync</code> - Repository cloning and parsing
+- <code>file_parsing</code> - Individual file processing
+- <code>embeddings</code> - Vector embedding generation
+- <code>ai_enrichment</code> - LLM-based enrichment
+- <code>default</code> - General tasks</p>
+<hr />
+<h3 id="4-analysis-layer">4. Analysis Layer</h3>
+<h4 id="41-tree-sitter-parsers-srcparsers">4.1 Tree-sitter Parsers (<code>src/parsers</code>)</h4>
+<p><strong>Purpose</strong>: Fast syntactic parsing for multiple languages</p>
+<p><strong>Supported Languages</strong>:
+- C# (<a href="file:///e:/Health/Axon.MCP.Server/src/parsers/csharp_parser.py">csharp_parser.py</a>)
+- Python (<a href="file:///e:/Health/Axon.MCP.Server/src/parsers/python_parser.py">python_parser.py</a>)
+- JavaScript/TypeScript (<a href="file:///e:/Health/Axon.MCP.Server/src/parsers/javascript_parser.py">javascript_parser.py</a>)
+- Vue (<a href="file:///e:/Health/Axon.MCP.Server/src/parsers/vue_parser.py">vue_parser.py</a>)</p>
+<p><strong>Extracts</strong>:
+- Symbols (classes, functions, variables)
+- Docstrings/comments
+- Import statements
+- Basic relationships
+- Complexity scores (cyclomatic complexity)</p>
+<h4 id="42-roslyn-analyzer-roslyn_analyzer">4.2 Roslyn Analyzer (<code>roslyn_analyzer/</code>)</h4>
+<p><strong>Purpose</strong>: Deep semantic analysis for C# code</p>
+<p><strong>Architecture</strong>: Persistent C# subprocess communicating via JSON over stdin/stdout</p>
+<p><strong>Capabilities</strong>:
+- Type resolution (<code>var user</code> → <code>User</code> class)
+- Cross-file references
+- Namespace resolution
+- Generic type inference
+- Method signature extraction with full type info</p>
+<p><strong>Communication Protocol</strong>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// Request</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p">{</span><span class="nt">&quot;operation&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;analyze&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;filePath&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;UserService.cs&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;content&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">}</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1">// Response</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p">{</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">&quot;symbols&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="err">...</span><span class="p">],</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">&quot;relations&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="p">{</span><span class="nt">&quot;from&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;UserController.Login&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;to&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;AuthService.Authenticate&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;calls&quot;</span><span class="p">}</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="p">]</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">}</span>
+</code></pre></div></p>
+<h4 id="43-knowledge-extractor-srcextractors">4.3 Knowledge Extractor (<code>src/extractors</code>)</h4>
+<p><strong>Purpose</strong>: Extract high-level patterns and relationships</p>
+<p><strong>Components</strong>:
+- <a href="file:///e:/Health/Axon.MCP.Server/src/extractors/knowledge_extractor.py">knowledge_extractor.py</a> - Main coordinator
+- <a href="file:///e:/Health/Axon.MCP.Server/src/extractors/api_extractor.py">api_extractor.py</a> - Detect REST endpoints
+- <a href="file:///e:/Health/Axon.MCP.Server/src/extractors/call_graph_builder.py">call_graph_builder.py</a> - Build function call graph
+- <a href="file:///e:/Health/Axon.MCP.Server/src/extractors/pattern_detector.py">pattern_detector.py</a> - Detect design patterns</p>
+<p><strong>Extracts</strong>:
+- API endpoints (routes, HTTP methods)
+- Call graphs (function dependencies)
+- Import relationships
+- Design patterns (Repository, Factory, etc.)</p>
+<h4 id="44-ef-core-analyzer-srcanalyzers">4.4 EF Core Analyzer (<code>src/analyzers</code>)</h4>
+<p><strong>Purpose</strong>: Extract Entity Framework Core mappings</p>
+<p><strong>Extracts</strong>:
+- Entity classes → Database tables
+- Properties → Columns
+- Relationships (one-to-many, many-to-many)
+- Foreign keys, navigation properties</p>
+<hr />
+<h3 id="5-data-layer">5. Data Layer</h3>
+<h4 id="51-database-srcdatabase">5.1 Database (<code>src/database</code>)</h4>
+<p><strong>Models</strong> (<a href="file:///e:/Health/Axon.MCP.Server/src/database/models.py">models.py</a>):
+- 14 SQLAlchemy models
+- Optimized indexes for common queries
+- Cascading deletes for data integrity
+- pgvector column for embeddings</p>
+<p><strong>Session Management</strong> (<a href="file:///e:/Health/Axon.MCP.Server/src/database/session.py">session.py</a>):
+- Async session factory
+- Connection pooling (20 connections, max 40)
+- Automatic session cleanup</p>
+<h4 id="52-redis-cache">5.2 Redis Cache</h4>
+<p><strong>Uses</strong>:
+- Celery message broker
+- Search result caching
+- LLM response caching
+- Real-time sync progress (Pub/Sub)</p>
+<hr />
+<h3 id="6-embeddings-srcembeddings">6. Embeddings (<code>src/embeddings</code>)</h3>
+<p><strong>Purpose</strong>: Generate vector embeddings for semantic search</p>
+<p><strong>Components</strong>:
+- <a href="file:///e:/Health/Axon.MCP.Server/src/embeddings/generator.py">generator.py</a> - Embedding generation
+- <a href="file:///e:/Health/Axon.MCP.Server/src/embeddings/summarizer.py">summarizer.py</a> - LLM-based summarization
+- <a href="file:///e:/Health/Axon.MCP.Server/src/embeddings/chunking.py">chunking.py</a> - Code chunking strategies</p>
+<p><strong>Providers</strong>:
+- <strong>Local</strong>: sentence-transformers/all-mpnet-base-v2 (768 dims)
+- <strong>OpenAI</strong>: text-embedding-3-small (1536 dims)</p>
+<p><strong>Chunking Strategy</strong>:
+- Function-level chunks (entire function body)
+- Class-level chunks (class definition + methods)
+- Module-level chunks (file overview)</p>
+<hr />
+<h2 id="processing-pipeline">⚙️ Processing Pipeline</h2>
+<p>The <strong>sync_repository</strong> task orchestrates the complete analysis pipeline:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>graph LR
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    A[1. Clone&lt;br/&gt;Repository] --&gt; B[2. Detect&lt;br/&gt;Solutions]
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    B --&gt; C[3. Restore&lt;br/&gt;.NET Deps]
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    C --&gt; D[4. Initialize&lt;br/&gt;Roslyn]
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    D --&gt; E[5. Discover&lt;br/&gt;Files]
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    E --&gt; F[6. Parse&lt;br/&gt;Tree-sitter]
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    F --&gt; G[7. Analyze&lt;br/&gt;Roslyn C#]
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    G --&gt; H[8. Extract&lt;br/&gt;APIs]
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    H --&gt; I[9. Resolve&lt;br/&gt;Imports]
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    I --&gt; J[10. Build&lt;br/&gt;Call Graph]
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    J --&gt; K[11. Detect&lt;br/&gt;Services]
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    K --&gt; L[12. Analyze&lt;br/&gt;EF Entities]
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    L --&gt; M[13. Generate&lt;br/&gt;Embeddings]
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    M --&gt; N[14. AI&lt;br/&gt;Enrichment]
+</code></pre></div>
+<h3 id="pipeline-steps-detail">Pipeline Steps Detail</h3>
+<ol>
+<li><strong>Clone Repository</strong>: GitLab/Azure DevOps API → local cache</li>
+<li><strong>Detect Solutions/Projects</strong>: Scan <code>.sln</code> and <code>.csproj</code> files</li>
+<li><strong>Restore .NET Dependencies</strong>: Run <code>dotnet restore</code></li>
+<li><strong>Initialize Roslyn</strong>: Start C# subprocess, load solution</li>
+<li><strong>Discover Files</strong>: List source files, compute hashes</li>
+<li><strong>Parse (Tree-sitter)</strong>: Extract symbols, imports, complexity</li>
+<li><strong>Analyze (Roslyn)</strong>: Deep C# semantic analysis</li>
+<li><strong>Extract APIs</strong>: Detect REST endpoints, routes</li>
+<li><strong>Resolve Imports</strong>: Map import statements to symbols</li>
+<li><strong>Build Call Graph</strong>: Track function calls</li>
+<li><strong>Detect Services</strong>: Identify APIs, workers, libraries</li>
+<li><strong>Analyze EF Entities</strong>: Extract database mappings</li>
+<li><strong>Generate Embeddings</strong>: Create vector embeddings</li>
+<li><strong>AI Enrichment</strong>: LLM-generated summaries (optional)</li>
+</ol>
+<p><strong>Memory Management</strong>:
+- Keyset pagination (50 files per batch)
+- <code>session.expunge_all()</code> every 50 files
+- Re-fetch repository context per batch</p>
+<hr />
+<h2 id="deployment-architecture">🐳 Deployment Architecture</h2>
+<h3 id="docker-services-10-containers">Docker Services (10 Containers)</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>┌─────────────────────────────────────────────────────────────┐
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>│                    Docker Network: axon-network             │
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├─────────────────────────────────────────────────────────────┤
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>│                                                             │
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>│  │ PostgreSQL   │  │    Redis     │  │   React UI   │     │
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>│  │  + pgvector  │  │   Cache/MQ   │  │   (Nginx)    │     │
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>│  │    :5432     │  │    :6379     │  │     :80      │     │
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>│  └──────────────┘  └──────────────┘  └──────────────┘     │
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>│                                                             │
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>│  ┌──────────────┐  ┌──────────────┐                        │
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>│  │  REST API    │  │  MCP Server  │                        │
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>│  │  (FastAPI)   │  │    (HTTP)    │                        │
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>│  │    :8080     │  │    :8001     │                        │
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>│  └──────────────┘  └──────────────┘                        │
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>│                                                             │
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>│  │   Worker     │  │  Enrichment  │  │     Beat     │     │
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>│  │ (Sync - 1)   │  │ Worker (8)   │  │  Scheduler   │     │
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a>│  └──────────────┘  └──────────────┘  └──────────────┘     │
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>│                                                             │
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>│  ┌──────────────┐  ┌──────────────┐                        │
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>│  │  Prometheus  │  │   Grafana    │                        │
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>│  │    :9090     │  │    :3000     │                        │
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>│  └──────────────┘  └──────────────┘                        │
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a>│                                                             │
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a>└─────────────────────────────────────────────────────────────┘
+</code></pre></div>
+<p><strong>Resource Allocation</strong>:
+- <strong>Core Worker</strong>: 1 concurrency (CPU-bound parsing)
+- <strong>Enrichment Worker</strong>: 8 concurrency (IO-bound LLM calls)
+- <strong>PostgreSQL</strong>: 20 connection pool, max 40
+- <strong>Redis</strong>: 50 max connections</p>
+<hr />
+<h2 id="search-architecture">🔍 Search Architecture</h2>
+<h3 id="hybrid-search-flow">Hybrid Search Flow</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>sequenceDiagram
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    participant C as Client
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    participant API as Search Service
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    participant PG as PostgreSQL
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    participant V as pgvector
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    participant R as Redis
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    C-&gt;&gt;API: search(query=&quot;authentication&quot;)
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    API-&gt;&gt;R: Check cache
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    alt Cache Hit
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        R--&gt;&gt;API: Cached results
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        API--&gt;&gt;C: Return results
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    else Cache Miss
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        API-&gt;&gt;API: Generate query embedding
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>        par Vector Search
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>            API-&gt;&gt;V: Cosine similarity search
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>            V--&gt;&gt;API: Top 10 results
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>        and Keyword Search
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>            API-&gt;&gt;PG: Full-text search
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>            PG--&gt;&gt;API: Top 10 results
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        end
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>        API-&gt;&gt;API: Merge + re-rank results
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>        API-&gt;&gt;R: Cache results (TTL: 3600s)
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>        API--&gt;&gt;C: Return ranked results
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    end
+</code></pre></div>
+<h3 id="search-strategies">Search Strategies</h3>
+<ol>
+<li><strong>Semantic Search</strong>: Vector similarity using pgvector</li>
+<li>Embed query using same model as code chunks</li>
+<li>Cosine similarity: <code>embedding &lt;=&gt; query_vector</code></li>
+<li>
+<p>Fast with HNSW index</p>
+</li>
+<li>
+<p><strong>Full-Text Search</strong>: PostgreSQL <code>tsvector</code></p>
+</li>
+<li>Indexes symbol names, docstrings, signatures</li>
+<li>Supports fuzzy matching</li>
+<li>
+<p>Language-specific stemming</p>
+</li>
+<li>
+<p><strong>Hybrid</strong>: Combine both with score fusion</p>
+</li>
+<li>Vector search weight: 0.6</li>
+<li>Keyword search weight: 0.4</li>
+<li>Re-rank by relevance</li>
+</ol>
+<hr />
+<h2 id="security-architecture">🔐 Security Architecture</h2>
+<h3 id="authentication-flow">Authentication Flow</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>graph LR
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    A[Client Request] --&gt; B{Has Cookie?}
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    B --&gt;|Yes| C[Validate JWT]
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    B --&gt;|No| D{Has X-API-Key?}
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    D --&gt;|Yes| E[Validate API Key]
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    D --&gt;|No| F[401 Unauthorized]
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    C --&gt;|Valid| G[Authorize Role]
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    C --&gt;|Invalid| F
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    E --&gt;|Valid| G
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>    E --&gt;|Invalid| F
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>    G --&gt;|Authorized| H[Process Request]
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>    G --&gt;|Forbidden| I[403 Forbidden]
+</code></pre></div>
+<p><strong>Auth Mechanisms</strong>:
+- <strong>JWT Tokens</strong>: For UI authentication (HTTP-only cookies)
+- <strong>API Keys</strong>: For service-to-service calls
+- <strong>Role-Based Access</strong>: admin, readonly</p>
+<p><strong>Secure Defaults</strong>:
+- HTTPS enforced in production
+- CORS configured for allowed origins
+- Rate limiting (100 req/min per IP)
+- Audit logging for all API calls</p>
+<hr />
+<h2 id="monitoring-observability">📊 Monitoring &amp; Observability</h2>
+<h3 id="metrics-stack">Metrics Stack</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Application Metrics → Prometheus → Grafana Dashboards
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Logs (structlog) → Redis Pub/Sub → Dashboard
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>Celery Events → Flower (optional)
+</code></pre></div>
+<p><strong>Key Metrics</strong>:
+- API latency (p50, p95, p99)
+- Search queries per second
+- Repository sync duration
+- Worker queue depth
+- Database connection pool usage
+- Cache hit ratio</p>
+<p><strong>Pre-configured Dashboards</strong>:
+- API Performance
+- Repository Sync Status
+- Search Analytics
+- System Health</p>
+<hr />
+<h2 id="source-control-integration">🌐 Source Control Integration</h2>
+<h3 id="gitlab-integration">GitLab Integration</h3>
+<p><strong>Features</strong>:
+- Auto-discover all accessible projects
+- Webhook support for auto-sync on push
+- Personal Access Token (PAT) authentication</p>
+<h3 id="azure-devops-integration">Azure DevOps Integration</h3>
+<p><strong>Features</strong>:
+- Repository scanning per project
+- NTLM authentication support
+- SSL verification bypass (for on-prem)</p>
+<p><strong>API Endpoints</strong>:
+- <code>POST /api/v1/repositories/discover</code> - Scan source control
+- <code>POST /api/v1/repositories/sync/{id}</code> - Trigger manual sync
+- <code>GET /api/v1/repositories</code> - List all repositories</p>
+<hr />
+<h2 id="future-architecture-enhancements">🔮 Future Architecture Enhancements</h2>
+<h3 id="planned-improvements">Planned Improvements</h3>
+<ol>
+<li><strong>RAG Pipeline</strong>: Add <code>ask_codebase</code> tool for conversational queries</li>
+<li><strong>Microservices Split</strong>: Separate parsing, embeddings, and API into independent services</li>
+<li><strong>Kubernetes</strong>: Production-grade orchestration with Helm charts</li>
+<li><strong>Event Sourcing</strong>: Audit trail for all symbol changes</li>
+<li><strong>GraphQL API</strong>: Supplement REST API for flexible queries</li>
+<li><strong>Multi-tenancy</strong>: Organization-level isolation</li>
+</ol>
+<hr />
+<h2 id="additional-resources">📖 Additional Resources</h2>
+<ul>
+<li><a href="../data_models/">Data Models</a> - Database schema details</li>
+<li><a href="../infrastructure/">Infrastructure</a> - Deployment configurations</li>
+<li><a href="../../api/rest_api/">API Reference</a> - REST API documentation</li>
+<li><a href="../../api/mcp_tools/">MCP Tools</a> - MCP protocol tools</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c8d2eff1.min.js"></script>
+      
+    
+  </body>
+</html>
