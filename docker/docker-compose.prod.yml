@@ -105,7 +105,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-axon}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-axon_mcp}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       PYTHONPATH: /app
-      MCP_TRANSPORT: http
+      MCP_TRANSPORT: sse
       MCP_HTTP_HOST: 0.0.0.0
       MCP_HTTP_PORT: 8001
     volumes:
@@ -116,7 +116,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 5

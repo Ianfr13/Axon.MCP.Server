@@ -88,10 +88,12 @@ class Settings(BaseSettings):
     vector_similarity_threshold: float = 0.7
 
     # MCP Server
-    mcp_transport: str = "stdio"  # "stdio" or "http"
+    mcp_transport: str = "stdio"  # "stdio", "http", or "sse"
     mcp_http_host: str = "0.0.0.0"
     mcp_http_port: int = 8001
     mcp_http_path: str = "/mcp"  # HTTP endpoint path
+    mcp_sse_path: str = "/sse"  # SSE endpoint path (GET for SSE stream)
+    mcp_sse_messages_path: str = "/messages"  # SSE messages endpoint path (POST for client messages)
 
     # API
     api_host: str = "0.0.0.0"
