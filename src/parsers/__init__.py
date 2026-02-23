@@ -15,6 +15,7 @@ from src.parsers.package_json_parser import PackageJsonParser
 from src.parsers.appsettings_parser import AppSettingsParser
 from src.parsers.sql_parser import SQLParser
 from src.parsers.openapi_parser import OpenAPIParser
+from src.parsers.python_parser import PythonParser
 from src.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -67,6 +68,8 @@ class ParserFactory:
             return TypeScriptParser(use_tsx=True)
         elif suffix == '.vue':
             return cls.get_parser(LanguageEnum.VUE)
+        elif suffix == '.py':
+            return cls.get_parser(LanguageEnum.PYTHON)
         elif suffix in ['.md', '.markdown']:
             return cls.get_parser(LanguageEnum.MARKDOWN)
         elif suffix in ['.sql', '.ddl']:
@@ -102,6 +105,7 @@ class ParserFactory:
             LanguageEnum.VUE: VueParser,
             LanguageEnum.MARKDOWN: MarkdownParser,
             LanguageEnum.SQL: SQLParser,
+            LanguageEnum.PYTHON: PythonParser,
         }
         
         parser_class = parser_map.get(language)
@@ -169,6 +173,7 @@ __all__ = [
     'JavaScriptParser',
     'TypeScriptParser',
     'VueParser',
+    'PythonParser',
     'ParserFactory',
     'parse_file',
     'parse_file_async',

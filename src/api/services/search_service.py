@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.schemas.search import SearchResult
 from src.config.enums import LanguageEnum, SymbolKindEnum
 from src.database.models import File, Repository, Symbol, Chunk
+from src.config.settings import get_settings
 from src.embeddings.generator import EmbeddingGenerator
 from src.vector_store.pgvector_store import PgVectorStore
 from src.utils.logging_config import get_logger
@@ -66,7 +67,9 @@ class SearchService:
             # but in practice FastAPI's startup ensures single-threaded init
             if SearchService._embedding_generator is None:
                 logger.info("initializing_shared_embedding_generator")
-                SearchService._embedding_generator = EmbeddingGenerator()
+                SearchService._embedding_generator = EmbeddingGenerator(
+                    provider_override=get_settings().search_embedding_provider
+                )
             self.embedding_generator = SearchService._embedding_generator
     
     async def search(

@@ -28,33 +28,51 @@ class EmbeddingResult:
 
 
 class EmbeddingGenerator:
-    """Generates vector embeddings using OpenAI or local models."""
-    
-    def __init__(self):
-        """Initialize embedding generator."""
-        self.provider = get_settings().embedding_provider
-        
+    """Generates vector embeddings using OpenAI, OpenRouter, or local models."""
+
+    def __init__(self, provider_override: Optional[str] = None):
+        """Initialize embedding generator.
+
+        Args:
+            provider_override: Force a specific provider instead of using settings.
+        """
+        self.provider = provider_override or get_settings().embedding_provider
+        settings = get_settings()
+
         if self.provider == "openai":
             if not OPENAI_AVAILABLE:
                 raise ImportError(
                     "Failed to initialize embedding generator: OpenAI package not installed. Install with: pip install openai"
                 )
-            if not get_settings().openai_api_key:
+            if not settings.openai_api_key:
                 raise ValueError("Failed to initialize embedding generator: OpenAI API key required when provider is 'openai'")
-            self.client = AsyncOpenAI(api_key=get_settings().openai_api_key)
-            self.model_name = get_settings().openai_embedding_model
-            self.dimension = get_settings().openai_embedding_dimension
+            self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+            self.model_name = settings.openai_embedding_model
+            self.dimension = settings.openai_embedding_dimension
+        elif self.provider == "openrouter":
+            if not OPENAI_AVAILABLE:
+                raise ImportError(
+                    "Failed to initialize embedding generator: OpenAI package not installed. Install with: pip install openai"
+                )
+            if not settings.openrouter_api_key:
+                raise ValueError("Failed to initialize embedding generator: OpenRouter API key required when provider is 'openrouter'")
+            self.client = AsyncOpenAI(
+                api_key=settings.openrouter_api_key,
+                base_url=settings.openrouter_base_url
+            )
+            self.model_name = settings.openrouter_embedding_model
+            self.dimension = 1024  # bge-m3 output dimension
         else:
             # Local model using sentence-transformers
             from sentence_transformers import SentenceTransformer
             logger.info(
                 "loading_local_embedding_model",
-                model=get_settings().local_embedding_model
+                model=settings.local_embedding_model
             )
-            self.model = SentenceTransformer(get_settings().local_embedding_model)
-            self.model_name = get_settings().local_embedding_model
+            self.model = SentenceTransformer(settings.local_embedding_model)
+            self.model_name = settings.local_embedding_model
             self.dimension = self.model.get_sentence_embedding_dimension()
-        
+
         logger.info(
             "embedding_generator_initialized",
             provider=self.provider,
@@ -85,7 +103,7 @@ class EmbeddingGenerator:
             batch = chunks[i:i + batch_size]
             
             try:
-                if self.provider == "openai":
+                if self.provider in ("openai", "openrouter"):
                     batch_results = await self._generate_openai_embeddings(batch)
                 else:
                     batch_results = await self._generate_local_embeddings(batch)

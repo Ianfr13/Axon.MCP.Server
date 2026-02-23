@@ -172,6 +172,12 @@
   border: 1px solid rgba(0, 120, 212, 0.3);
 }
 
+.provider_github {
+  background: rgba(110, 118, 129, 0.15);
+  color: #e6edf3;
+  border: 1px solid rgba(110, 118, 129, 0.3);
+}
+
 .status_pill {
   display: inline-flex;
   align-items: center;

@@ -64,6 +64,9 @@ export type RepositoryResponse = {
   // Azure DevOps specific fields
   azuredevops_project_name?: string;
   azuredevops_repo_id?: string;
+  // GitHub specific fields
+  github_repo_id?: number;
+  github_owner?: string;
   // Common fields
   name: string;
   path_with_namespace: string;
@@ -104,6 +107,9 @@ export type RepositoryCreatePayload = {
   // Azure DevOps specific fields
   azuredevops_project_name?: string;
   azuredevops_repo_id?: string;
+  // GitHub specific fields
+  github_repo_id?: number;
+  github_owner?: string;
   // Common fields
   name: string;
   path_with_namespace: string;
@@ -157,6 +163,30 @@ export type AzureDevOpsDiscoveryResponse = {
   tracked_count: number;
   untracked_count: number;
   repositories: AzureDevOpsRepositoryDiscovery[];
+};
+
+export type GitHubRepositoryDiscovery = {
+  github_repo_id: number;
+  github_owner: string;
+  name: string;
+  path_with_namespace: string;
+  url: string;
+  clone_url: string;
+  default_branch: string;
+  description?: string;
+  visibility?: string;
+  is_fork?: boolean;
+  is_archived?: boolean;
+  is_tracked: boolean;
+  tracked_repository_id?: number;
+};
+
+export type GitHubDiscoveryResponse = {
+  organization: string;
+  total_repositories: number;
+  tracked_count: number;
+  untracked_count: number;
+  repositories: GitHubRepositoryDiscovery[];
 };
 
 export type BulkRepositoryAddResponse = {
@@ -455,6 +485,11 @@ export async function discoverGitLabProjects(groupId: string): Promise<GitLabDis
 
 export async function discoverAzureDevOpsRepositories(projectName: string): Promise<AzureDevOpsDiscoveryResponse> {
   const res = await api.get<AzureDevOpsDiscoveryResponse>(`/api/v1/repositories/discover/azuredevops/${projectName}`);
+  return res.data;
+}
+
+export async function discoverGitHubRepositories(organization: string): Promise<GitHubDiscoveryResponse> {
+  const res = await api.get<GitHubDiscoveryResponse>(`/api/v1/repositories/discover/github/${organization}`);
   return res.data;
 }
 

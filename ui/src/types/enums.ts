@@ -90,6 +90,7 @@ export enum WorkerStatusEnum {
 export enum SourceControlProviderEnum {
   gitlab = "GITLAB",
   azuredevops = "AZUREDEVOPS",
+  github = "GITHUB",
 }
 
 

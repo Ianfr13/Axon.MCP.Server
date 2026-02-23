@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     gitlab_group_id: Optional[str] = None
     gitlab_webhook_secret: Optional[str] = None
 
+    # GitHub
+    github_url: str = "https://github.com"
+    github_token: Optional[str] = None
+    github_organization: Optional[str] = None
+    github_webhook_secret: Optional[str] = None
+
     # Azure DevOps
     azuredevops_url: str = "https://devops.example.org/"
     azuredevops_username: Optional[str] = None  # For NTLM: use DOMAIN\\username or just username
@@ -55,10 +61,17 @@ class Settings(BaseSettings):
     celery_task_soft_time_limit: int = 3000
 
     # Embeddings
-    embedding_provider: str = "local"  # "local" or "openai"
+    embedding_provider: str = "local"  # "local", "openai", or "openrouter"
     openai_api_key: Optional[str] = None
     openai_embedding_model: str = "text-embedding-3-small"
     openai_embedding_dimension: int = 1536
+
+    # OpenRouter embeddings (uses OpenAI-compatible API)
+    openrouter_embedding_model: str = "baai/bge-m3"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
+    # Search uses local model by default (fast, no API call)
+    search_embedding_provider: str = "local"
     
     # LLM Summarization (Phase 2)
     llm_provider: str = "openrouter"  # "openai" or "openrouter"
@@ -124,6 +137,12 @@ class Settings(BaseSettings):
     # Hierarchical Service Detection (for DDD architecture visibility)
     detect_library_services: bool = True  # Detect class libraries as services for hierarchical exploration
     min_library_symbols: int = 10  # Minimum symbols required to detect a library as a service
+
+    # Infisical (Secrets Manager)
+    infisical_url: str = "http://localhost:4938"
+    infisical_token: Optional[str] = None
+    infisical_workspace_id: str = "abb3588b-8c8f-46bf-a802-964b4f34a056"
+    infisical_environment: str = "prod"
 
     # Monitoring
     metrics_enabled: bool = True

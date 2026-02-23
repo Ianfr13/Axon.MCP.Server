@@ -93,7 +93,11 @@ export default function RepoTable({
               <td>{repo.id}</td>
               <td>
                 <span className={`${styles.provider_badge} ${styles[`provider_${repo.provider.toLowerCase()}`]}`}>
-                  {repo.provider === SourceControlProviderEnum.gitlab ? 'GitLab' : 'Azure DevOps'}
+                  {repo.provider === SourceControlProviderEnum.gitlab
+                    ? 'GitLab'
+                    : repo.provider === SourceControlProviderEnum.github
+                    ? 'GitHub'
+                    : 'Azure DevOps'}
                 </span>
               </td>
               <td>

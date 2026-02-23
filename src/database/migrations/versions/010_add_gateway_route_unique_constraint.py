@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = '010'
-down_revision = '009'
+down_revision = '009_add_endpoint_to_symbolkind'
 branch_labels = None
 depends_on = None
 

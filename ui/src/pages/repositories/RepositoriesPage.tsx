@@ -3,6 +3,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import ConfirmationModal from "../../components/confirmation_modal/ConfirmationModal";
 import GitLabDiscoveryModal from "../../components/gitlab_discovery/GitLabDiscoveryModal";
 import AzureDevOpsDiscoveryModal from "../../components/azuredevops_discovery/AzureDevOpsDiscoveryModal";
+import GitHubDiscoveryModal from "../../components/github_discovery/GitHubDiscoveryModal";
 import Pagination from "../../components/pagination/Pagination";
 import RepoTable from "../../components/repo_table/RepoTable";
 import Toast, { ToastTypeEnum } from "../../components/toast/Toast";
@@ -27,6 +28,8 @@ type FormState = {
   gitlab_project_id: string;
   azuredevops_project_name: string;
   azuredevops_repo_id: string;
+  github_repo_id: string;
+  github_owner: string;
   name: string;
   path_with_namespace: string;
   url: string;
@@ -39,6 +42,8 @@ const initialFormState: FormState = {
   gitlab_project_id: "",
   azuredevops_project_name: "",
   azuredevops_repo_id: "",
+  github_repo_id: "",
+  github_owner: "",
   name: "",
   path_with_namespace: "",
   url: "",
@@ -58,6 +63,7 @@ export default function RepositoriesPage() {
   const [showForm, setShowForm] = useState(false);
   const [showGitLabDiscoveryModal, setShowGitLabDiscoveryModal] = useState(false);
   const [showAzureDevOpsDiscoveryModal, setShowAzureDevOpsDiscoveryModal] = useState(false);
+  const [showGitHubDiscoveryModal, setShowGitHubDiscoveryModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -127,6 +133,16 @@ export default function RepositoriesPage() {
         setError("Azure DevOps project name and repository ID are required");
         return;
       }
+    } else if (formState.provider === SourceControlProviderEnum.github) {
+      const githubRepoId = Number(formState.github_repo_id);
+      if (!Number.isInteger(githubRepoId) || githubRepoId <= 0) {
+        setError("GitHub repository ID must be a positive integer");
+        return;
+      }
+      if (!formState.github_owner.trim()) {
+        setError("GitHub owner is required");
+        return;
+      }
     }
 
     const payload: RepositoryCreatePayload = {
@@ -144,6 +160,9 @@ export default function RepositoriesPage() {
     } else if (formState.provider === SourceControlProviderEnum.azuredevops) {
       payload.azuredevops_project_name = formState.azuredevops_project_name.trim();
       payload.azuredevops_repo_id = formState.azuredevops_repo_id.trim();
+    } else if (formState.provider === SourceControlProviderEnum.github) {
+      payload.github_repo_id = Number(formState.github_repo_id);
+      payload.github_owner = formState.github_owner.trim();
     }
 
     if (!payload.name || !payload.url) {
@@ -221,6 +240,8 @@ export default function RepositoriesPage() {
       gitlab_project_id: repo.gitlab_project_id?.toString() || "",
       azuredevops_project_name: repo.azuredevops_project_name || "",
       azuredevops_repo_id: repo.azuredevops_repo_id || "",
+      github_repo_id: repo.github_repo_id?.toString() || "",
+      github_owner: repo.github_owner || "",
       name: repo.name,
       path_with_namespace: repo.path_with_namespace,
       url: repo.url,
@@ -382,6 +403,9 @@ export default function RepositoriesPage() {
           <button className={styles.secondary_button} onClick={() => setShowAzureDevOpsDiscoveryModal(true)}>
             Discover from Azure DevOps
           </button>
+          <button className={styles.secondary_button} onClick={() => setShowGitHubDiscoveryModal(true)}>
+            Discover from GitHub
+          </button>
           <button className={styles.secondary_button} onClick={() => {
             setEditingRepo(null);
             setFormState(initialFormState);
@@ -423,6 +447,7 @@ export default function RepositoriesPage() {
                 >
                   <option value={SourceControlProviderEnum.gitlab}>GitLab</option>
                   <option value={SourceControlProviderEnum.azuredevops}>Azure DevOps</option>
+                  <option value={SourceControlProviderEnum.github}>GitHub</option>
                 </select>
               </div>
             )}
@@ -472,6 +497,39 @@ export default function RepositoriesPage() {
                     onChange={(event) => handleInputChange("azuredevops_repo_id", event.target.value)}
                     placeholder="e.g. repo-guid-here"
                     required={formState.provider === SourceControlProviderEnum.azuredevops}
+                  />
+                </div>
+              </>
+            )}
+
+            {formState.provider === SourceControlProviderEnum.github && (
+              <>
+                <div className={styles.form_row}>
+                  <label className={styles.form_label} htmlFor="github_owner">
+                    GitHub Owner (Organization or Username)
+                  </label>
+                  <input
+                    id="github_owner"
+                    name="github_owner"
+                    className={styles.form_input}
+                    value={formState.github_owner}
+                    onChange={(event) => handleInputChange("github_owner", event.target.value)}
+                    placeholder="e.g. anthropics"
+                    required={formState.provider === SourceControlProviderEnum.github}
+                  />
+                </div>
+                <div className={styles.form_row}>
+                  <label className={styles.form_label} htmlFor="github_repo_id">
+                    GitHub Repository ID
+                  </label>
+                  <input
+                    id="github_repo_id"
+                    name="github_repo_id"
+                    className={styles.form_input}
+                    value={formState.github_repo_id}
+                    onChange={(event) => handleInputChange("github_repo_id", event.target.value)}
+                    placeholder="e.g. 123456789"
+                    required={formState.provider === SourceControlProviderEnum.github}
                   />
                 </div>
               </>
@@ -634,6 +692,15 @@ export default function RepositoriesPage() {
       <AzureDevOpsDiscoveryModal
         isOpen={showAzureDevOpsDiscoveryModal}
         onClose={() => setShowAzureDevOpsDiscoveryModal(false)}
+        onSuccess={() => {
+          void fetchRepositories();
+          showToast("Repositories updated successfully", ToastTypeEnum.success);
+        }}
+      />
+
+      <GitHubDiscoveryModal
+        isOpen={showGitHubDiscoveryModal}
+        onClose={() => setShowGitHubDiscoveryModal(false)}
         onSuccess={() => {
           void fetchRepositories();
           showToast("Repositories updated successfully", ToastTypeEnum.success);

@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'add_module_content_hash'
-down_revision = '010_add_gateway_route_unique_constraint'
+down_revision = '010'
 depends_on = None
 
 

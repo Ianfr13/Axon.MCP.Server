@@ -241,7 +241,13 @@ export default function RepositoryDetailPage() {
           <p className={styles.detail_subtitle}>{repository.path_with_namespace}</p>
           <div className={styles.detail_meta}>
             <span>ID #{repository.id}</span>
-            <span>GitLab #{repository.gitlab_project_id}</span>
+            <span>
+              {repository.provider === SourceControlProviderEnum.github
+                ? `GitHub #${repository.github_repo_id}`
+                : repository.provider === SourceControlProviderEnum.azuredevops
+                ? `Azure DevOps ${repository.azuredevops_repo_id || ''}`
+                : `GitLab #${repository.gitlab_project_id}`}
+            </span>
             <span>Default branch {repository.default_branch}</span>
           </div>
         </div>
@@ -312,7 +318,11 @@ export default function RepositoryDetailPage() {
           <article className={styles.summary_card}>
             <span className={styles.summary_label}>URL</span>
             <a className={styles.summary_link} href={repository.url} target="_blank" rel="noreferrer">
-              {repository.provider === SourceControlProviderEnum.azuredevops ? "Open in Azure DevOps" : "Open in GitLab"}
+              {repository.provider === SourceControlProviderEnum.github
+                ? "Open in GitHub"
+                : repository.provider === SourceControlProviderEnum.azuredevops
+                ? "Open in Azure DevOps"
+                : "Open in GitLab"}
             </a>
           </article>
         </div>

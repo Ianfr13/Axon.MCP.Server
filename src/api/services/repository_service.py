@@ -17,6 +17,8 @@ from src.api.schemas.repositories import (
     GitLabDiscoveryResponse,
     AzureDevOpsRepositoryDiscovery,
     AzureDevOpsDiscoveryResponse,
+    GitHubRepositoryDiscovery,
+    GitHubDiscoveryResponse,
     BulkRepositoryAddResponse,
     BulkRepositoryRemoveResponse,
     BulkRepositorySyncResponse,
@@ -26,6 +28,7 @@ from src.config.enums import RepositoryStatusEnum, SourceControlProviderEnum
 from src.database.models import Repository, File, Commit
 from src.gitlab.client import GitLabClient
 from src.azuredevops.client import AzureDevOpsClient
+from src.github.client import GitHubClient
 from src.utils.logging_config import get_logger
 from src.workers.tasks import sync_repository
 
@@ -113,6 +116,8 @@ class RepositoryService:
             gitlab_project_id=payload.gitlab_project_id,
             azuredevops_project_name=payload.azuredevops_project_name,
             azuredevops_repo_id=payload.azuredevops_repo_id,
+            github_repo_id=payload.github_repo_id,
+            github_owner=payload.github_owner,
             name=payload.name,
             path_with_namespace=payload.path_with_namespace,
             url=payload.url,
@@ -294,6 +299,78 @@ class RepositoryService:
             repositories=repositories,
         )
 
+    async def discover_github_repositories(self, organization: str) -> GitHubDiscoveryResponse:
+        """
+        Discover all repositories in a GitHub organization and check tracking status.
+
+        Args:
+            organization: GitHub organization name
+
+        Returns:
+            Discovery response with repositories and tracking status
+        """
+        # Get all repositories from GitHub (try org first, fallback to user)
+        github_client = GitHubClient()
+        try:
+            github_repos = github_client.list_org_repositories(organization)
+        except Exception:
+            github_repos = github_client.list_user_repositories(organization)
+
+        # Get all tracked GitHub repositories
+        stmt = select(Repository).where(Repository.provider == SourceControlProviderEnum.GITHUB)
+        result = await self._session.execute(stmt)
+        tracked_repos = {repo.github_repo_id: repo for repo in result.scalars().all()}
+
+        # Build discovery response
+        repositories: List[GitHubRepositoryDiscovery] = []
+        tracked_count = 0
+        untracked_count = 0
+
+        for repo in github_repos:
+            github_id = repo["id"]
+            is_tracked = github_id in tracked_repos
+            tracked_repo = tracked_repos.get(github_id)
+
+            if is_tracked:
+                tracked_count += 1
+            else:
+                untracked_count += 1
+
+            repositories.append(
+                GitHubRepositoryDiscovery(
+                    github_repo_id=github_id,
+                    github_owner=repo["owner"],
+                    name=repo["name"],
+                    path_with_namespace=repo["path_with_namespace"],
+                    url=repo.get("url", repo["http_url_to_repo"]),
+                    clone_url=repo["clone_url"],
+                    default_branch=repo["default_branch"],
+                    description=repo.get("description"),
+                    visibility=repo.get("visibility"),
+                    is_fork=repo.get("is_fork", False),
+                    is_archived=repo.get("is_archived", False),
+                    size=repo.get("size", 0),
+                    is_tracked=is_tracked,
+                    tracked_repository_id=tracked_repo.id if tracked_repo else None,
+                )
+            )
+
+        logger.info(
+            "github_repositories_discovered",
+            organization=organization,
+            total=len(repositories),
+            tracked=tracked_count,
+            untracked=untracked_count,
+        )
+
+        return GitHubDiscoveryResponse(
+            organization=organization,
+            total_repositories=len(repositories),
+            tracked_count=tracked_count,
+            untracked_count=untracked_count,
+            repositories=repositories,
+        )
+
     async def bulk_add_repositories(
         self, repositories: List[RepositoryCreate]
     ) -> BulkRepositoryAddResponse:
@@ -326,6 +403,11 @@ class RepositoryService:
                         Repository.azuredevops_project_name == repo_data.azuredevops_project_name,
                         Repository.azuredevops_repo_id == repo_data.azuredevops_repo_id
                     )
+                elif repo_data.provider == SourceControlProviderEnum.GITHUB:
+                    stmt = select(Repository).where(
+                        Repository.provider == SourceControlProviderEnum.GITHUB,
+                        Repository.github_repo_id == repo_data.github_repo_id
+                    )
                 else:
                     raise ValueError(f"Unsupported provider: {repo_data.provider}")
 
@@ -354,8 +436,13 @@ class RepositoryService:
                     elif repo_data.provider == SourceControlProviderEnum.AZUREDEVOPS:
                         azuredevops_client = AzureDevOpsClient()
                         optimal_branch = azuredevops_client.get_optimal_branch_for_repository(
-                            repo_data.azuredevops_project_name, 
+                            repo_data.azuredevops_project_name,
                             repo_data.name
+                        )
+                    elif repo_data.provider == SourceControlProviderEnum.GITHUB:
+                        github_client = GitHubClient()
+                        optimal_branch = github_client.get_optimal_branch_for_repository(
+                            repo_data.path_with_namespace
                         )
                     else:
                         optimal_branch = repo_data.default_branch
@@ -387,6 +474,8 @@ class RepositoryService:
                     gitlab_project_id=repo_data.gitlab_project_id,
                     azuredevops_project_name=repo_data.azuredevops_project_name,
                     azuredevops_repo_id=repo_data.azuredevops_repo_id,
+                    github_repo_id=repo_data.github_repo_id,
+                    github_owner=repo_data.github_owner,
                     name=repo_data.name,
                     path_with_namespace=repo_data.path_with_namespace,
                     url=repo_data.url,

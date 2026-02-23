@@ -50,7 +50,11 @@ class Repository(Base):
     # Azure DevOps specific fields
     azuredevops_project_name = Column(String(255), index=True)
     azuredevops_repo_id = Column(String(255), index=True)
-    
+
+    # GitHub specific fields
+    github_repo_id = Column(Integer, index=True)
+    github_owner = Column(String(255), index=True)
+
     # Common fields
     name = Column(String(255), nullable=False)
     path_with_namespace = Column(String(500), nullable=False)
@@ -85,6 +89,7 @@ class Repository(Base):
         Index("idx_repo_provider_path", "provider", "path_with_namespace"),
         Index("idx_repo_gitlab_project", "gitlab_project_id"),
         Index("idx_repo_azuredevops_project_repo", "azuredevops_project_name", "azuredevops_repo_id"),
+        Index("idx_repo_github_owner_id", "github_owner", "github_repo_id"),
     )
 
 

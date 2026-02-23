@@ -18,6 +18,7 @@ from src.api.routes.mcp_test import router as mcp_test_router
 from src.api.routes.repositories import router as repositories_router
 from src.api.routes.search import router as search_router
 from src.api.routes.symbols import router as symbols_router
+from src.api.routes.webhooks import router as webhooks_router
 from src.api.routes.workers import router as workers_router
 from src.api.routes.statistics import router as statistics_router
 from src.api.routes.analysis import router as analysis_router
@@ -177,6 +178,7 @@ app.include_router(workers_router, prefix="/api/v1", tags=["Workers"])
 app.include_router(statistics_router, prefix="/api/v1", tags=["Statistics"])
 app.include_router(analysis_router, prefix="/api/v1", tags=["Analysis"])
 app.include_router(enrichment_router, prefix="/api/v1", tags=["Enrichment"])
+app.include_router(webhooks_router, prefix="/api/v1", tags=["Webhooks"])
 app.include_router(mcp_test_router, prefix="/api/v1", tags=["MCP Testing"])
 # MCP HTTP transport endpoint (no prefix - root level)
 app.include_router(mcp_http_router, tags=["MCP HTTP Transport"])
