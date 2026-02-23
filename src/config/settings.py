@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     database_max_overflow: int = 40
     database_pool_timeout: int = 30
     database_echo: bool = False
+    database_ssl_enabled: bool = False
 
     # Redis
     # Note: When running in Docker, use "redis://redis:6379/0" (service name)

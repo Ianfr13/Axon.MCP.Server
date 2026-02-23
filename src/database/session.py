@@ -20,7 +20,7 @@ connect_args = {
     "server_settings": {"application_name": "axon_mcp_server"},
 }
 
-if get_settings().environment == "production":
+if get_settings().database_ssl_enabled:
     connect_args["ssl"] = True
 
 
