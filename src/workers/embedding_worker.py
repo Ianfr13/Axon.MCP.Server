@@ -25,35 +25,52 @@ async def _generate_repository_embeddings(
     task=None
 ) -> int:
     """
-    Generate embeddings for all chunks in repository.
-    
+    Generate embeddings for chunks in repository (incremental).
+
+    Only generates embeddings for chunks that don't already have one.
+
     Args:
         session: Database session
         repository_id: Repository ID
         task: Celery task (for progress updates)
-        
+
     Returns:
         Number of embeddings generated
     """
-    # Get all chunks for repository
+    from src.database.models import Embedding
+
+    # Get only chunks that DON'T have embeddings yet (incremental)
     result = await session.execute(
+        select(Chunk)
+        .join(File)
+        .outerjoin(Embedding, Chunk.id == Embedding.chunk_id)
+        .where(File.repository_id == repository_id)
+        .where(Embedding.id.is_(None))
+    )
+    chunks = result.scalars().all()
+
+    if not chunks:
+        logger.info(
+            "no_new_chunks_for_embeddings",
+            repository_id=repository_id,
+            message="All chunks already have embeddings"
+        )
+        return 0
+
+    # Count total for logging
+    total_result = await session.execute(
         select(Chunk)
         .join(File)
         .where(File.repository_id == repository_id)
     )
-    chunks = result.scalars().all()
-    
-    if not chunks:
-        logger.warning(
-            "no_chunks_found_for_embeddings",
-            repository_id=repository_id
-        )
-        return 0
-    
+    total_chunks = len(total_result.scalars().all())
+
     logger.info(
         "generating_embeddings",
         repository_id=repository_id,
-        chunk_count=len(chunks)
+        chunk_count=len(chunks),
+        total_chunks=total_chunks,
+        skipped=total_chunks - len(chunks)
     )
     
     # Prepare chunks for embedding

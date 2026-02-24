@@ -61,9 +61,19 @@ def create_streamable_http_app():
     async def handle_health(request: Request):
         return JSONResponse({"status": "ok", "transport": "streamable-http", "server": "axon-mcp-server"})
 
+    class _AlreadySentResponse:
+        """No-op ASGI response for handlers that already wrote to send."""
+        async def __call__(self, scope, receive, send):
+            pass
+
     async def handle_mcp_request(request: Request):
         """Route handler that delegates to StreamableHTTPSessionManager."""
         await session_manager.handle_request(request.scope, request.receive, request._send)
+        return _AlreadySentResponse()
+
+    async def handle_wellknown(request: Request):
+        """Return empty JSON for OAuth discovery — indicates no auth required."""
+        return JSONResponse({})
 
     app = Starlette(
         debug=settings.debug,
@@ -71,6 +81,12 @@ def create_streamable_http_app():
         routes=[
             Route("/health", endpoint=handle_health),
             Route("/mcp", endpoint=handle_mcp_request, methods=["GET", "POST", "DELETE"]),
+            Route("/.well-known/oauth-protected-resource", endpoint=handle_wellknown),
+            Route("/.well-known/oauth-protected-resource/{path:path}", endpoint=handle_wellknown),
+            Route("/.well-known/oauth-authorization-server", endpoint=handle_wellknown),
+            Route("/.well-known/oauth-authorization-server/{path:path}", endpoint=handle_wellknown),
+            Route("/.well-known/openid-configuration", endpoint=handle_wellknown),
+            Route("/.well-known/openid-configuration/{path:path}", endpoint=handle_wellknown),
         ],
         middleware=[
             Middleware(
