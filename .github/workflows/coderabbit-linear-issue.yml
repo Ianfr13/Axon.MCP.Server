@@ -2,7 +2,7 @@ name: CodeRabbit → Linear Issue (Auto)
 
 # Quando CodeRabbit posta/edita o walkthrough (resumo final do review),
 # cria UM issue consolidado no Linear com todos os findings.
-# Ciclo: PR → Review → Issue → Auto-Claude fix → novo PR → re-review
+# Ciclo contínuo: PR → Review → Issue → Fix → Re-review → Novo Issue → Fix → ...até resolver
 
 on:
   issue_comment:
@@ -33,9 +33,9 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const walkthrough = context.payload.comment.body;
+            const walkthroughCommentId = context.payload.comment.id;
 
             // Verificar se o walkthrough indica problemas encontrados
-            // Se só tem "No issues found" ou similar, pular
             const hasFindings = walkthrough.includes('⚠️') ||
               walkthrough.includes('🔴') ||
               walkthrough.includes('Changes requested') ||
@@ -47,35 +47,48 @@ jobs:
               return;
             }
 
-            // Verificar se já pedimos issue nesse PR (evitar duplicatas)
+            // Deduplicação por walkthrough (não por PR inteiro)
+            // Permite o loop: review → issue → fix → re-review → novo issue
+            // Só bloqueia se já pedimos issue para ESTE MESMO walkthrough comment
             const { data: prComments } = await github.rest.issues.listComments({
               owner, repo,
               issue_number: prNumber,
               per_page: 100,
             });
 
+            const marker = `<!-- walkthrough-${walkthroughCommentId} -->`;
             const alreadyRequested = prComments.some(c =>
               c.user.login === 'github-actions[bot]' &&
-              c.body.includes('@coderabbitai create a single linear issue')
+              c.body.includes(marker)
             );
 
             if (alreadyRequested) {
-              console.log('Issue já foi solicitado nesse PR. Pulando.');
+              console.log(`Issue já solicitado para este walkthrough (comment ${walkthroughCommentId}). Pulando.`);
               return;
             }
 
-            // Pedir pro CodeRabbit criar UM issue consolidado
+            // Contar ciclo de review (quantas vezes já pedimos issue nesse PR)
+            const reviewCycle = prComments.filter(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.includes('@coderabbitai create a single linear issue')
+            ).length + 1;
+
+            // Pedir pro CodeRabbit criar issue consolidado para este ciclo
             await github.rest.issues.createComment({
               owner, repo,
               issue_number: prNumber,
               body: [
-                '@coderabbitai create a single linear issue that consolidates ALL review findings from this PR.',
+                marker,
+                `@coderabbitai create a single linear issue that consolidates ALL review findings from this PR.`,
+                '',
+                `**Review cycle #${reviewCycle}** — This is ${reviewCycle === 1 ? 'the initial review' : 'a follow-up review after fixes'}.`,
                 '',
                 'Include:',
-                '- All code review comments and suggestions',
+                '- All code review comments and suggestions from this review cycle',
                 '- Files affected with line references',
                 '- Priority based on severity of issues found',
-              ].join('\n'),
+                reviewCycle > 1 ? '- Note which issues are NEW vs recurring from previous reviews' : '',
+              ].filter(Boolean).join('\n'),
             });
 
-            console.log('Issue consolidado solicitado no Linear.');
+            console.log(`Issue consolidado solicitado no Linear (ciclo #${reviewCycle}).`);
