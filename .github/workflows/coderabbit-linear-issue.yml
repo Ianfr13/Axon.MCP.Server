@@ -4,7 +4,7 @@ name: CodeRabbit → Linear Issue (Auto)
 # aguarda o review completar via polling, analisa findings,
 # cria o issue direto no Linear via API, e atribui ao projeto.
 #
-# Ciclo: PR → Review → Issue (Triage) → Auto-Claude fix → novo PR → re-review
+# Ciclo: PR → Review → Issue (Todo) → Auto-Claude fix → novo PR → re-review
 
 on:
   issue_comment:
@@ -225,14 +225,12 @@ jobs:
             const states = teamData.team.states.nodes;
             const linearLabels = teamData.team.labels.nodes;
 
-            // Encontrar o state "Triage" ou "Backlog" ou "Todo" para issue novo
-            const triageState = states.find(s => /triage/i.test(s.name))
-              || states.find(s => /backlog/i.test(s.name))
-              || states.find(s => /todo/i.test(s.name))
-              || states.find(s => s.type === 'backlog');
+            // Encontrar o state "Todo" para issue novo
+            const triageState = states.find(s => /todo/i.test(s.name))
+              || states.find(s => s.type === 'unstarted');
 
             if (!triageState) {
-              core.setFailed('Nenhum state inicial encontrado no Linear (Triage/Backlog/Todo)');
+              core.setFailed('Nenhum state "Todo" encontrado no Linear');
               return;
             }
 
