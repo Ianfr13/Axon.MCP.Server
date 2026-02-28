@@ -1,0 +1,232 @@
+name: Linear Issue Lifecycle Sync
+
+# Acompanha o ciclo de vida do PR e atualiza o status
+# do issue no Linear automaticamente.
+#
+# PR opened/reopened    → In Progress
+# Review approved       → Ready to Merge
+# PR merged             → Done
+# PR closed (sem merge) → Cancelled
+
+on:
+  pull_request:
+    types: [opened, reopened, closed, converted_to_draft]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  issues: read
+  pull-requests: read
+
+jobs:
+  sync-linear-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Atualizar status no Linear
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const LINEAR_API_KEY = process.env.LINEAR_API_KEY;
+            const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID;
+
+            // ─── Helper: Linear GraphQL ──────────────────────────────
+            async function linearQuery(query, variables = {}) {
+              const res = await fetch('https://api.linear.app/graphql', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': LINEAR_API_KEY,
+                },
+                body: JSON.stringify({ query, variables }),
+              });
+              const json = await res.json();
+              if (json.errors) {
+                throw new Error(`Linear API: ${JSON.stringify(json.errors)}`);
+              }
+              return json.data;
+            }
+
+            // ─── Determinar PR number e evento ───────────────────────
+            let prNumber;
+            let targetState;
+
+            if (context.eventName === 'pull_request') {
+              prNumber = context.payload.pull_request.number;
+              const action = context.payload.action;
+              const merged = context.payload.pull_request.merged;
+
+              if (action === 'closed' && merged) {
+                targetState = 'done';
+              } else if (action === 'closed' && !merged) {
+                targetState = 'cancelled';
+              } else if (action === 'opened' || action === 'reopened') {
+                targetState = 'in_progress';
+              } else if (action === 'converted_to_draft') {
+                targetState = 'in_progress';
+              }
+            } else if (context.eventName === 'pull_request_review') {
+              prNumber = context.payload.pull_request.number;
+              const reviewState = context.payload.review.state;
+
+              if (reviewState === 'approved') {
+                targetState = 'ready_to_merge';
+              } else if (reviewState === 'changes_requested') {
+                targetState = 'in_progress';
+              }
+            }
+
+            if (!targetState) {
+              core.info('Evento não requer atualização de status.');
+              return;
+            }
+
+            core.info(`PR #${prNumber} → target state: ${targetState}`);
+
+            // ─── Buscar Linear issue ID nos comentários do PR ────────
+            let linearIssueId = null;
+            let linearIdentifier = null;
+            let page = 1;
+
+            while (true) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner, repo,
+                issue_number: prNumber,
+                per_page: 100,
+                page,
+              });
+
+              if (comments.length === 0) break;
+
+              for (const c of comments) {
+                if (c.user.login !== 'github-actions[bot]') continue;
+
+                const idMatch = c.body.match(/<!-- linear-issue-id:([a-f0-9-]+) -->/);
+                const identifierMatch = c.body.match(/<!-- linear-issue-identifier:([A-Z]+-\d+) -->/);
+
+                if (idMatch) {
+                  linearIssueId = idMatch[1];
+                  linearIdentifier = identifierMatch ? identifierMatch[1] : null;
+                  break;
+                }
+              }
+
+              if (linearIssueId) break;
+              if (comments.length < 100) break;
+              page++;
+            }
+
+            if (!linearIssueId) {
+              core.info('Nenhum issue Linear vinculado a este PR. Pulando.');
+              return;
+            }
+
+            core.info(`Issue Linear encontrado: ${linearIdentifier || linearIssueId}`);
+
+            // ─── Buscar states do time ───────────────────────────────
+            const teamData = await linearQuery(`
+              query($teamId: String!) {
+                team(id: $teamId) {
+                  states { nodes { id name type } }
+                }
+              }
+            `, { teamId: LINEAR_TEAM_ID });
+
+            const states = teamData.team.states.nodes;
+
+            // Mapear target para state real
+            const stateMap = {
+              'in_progress': states.find(s => /in\s*progress/i.test(s.name))
+                || states.find(s => s.type === 'started'),
+              'in_review': states.find(s => /in\s*review/i.test(s.name))
+                || states.find(s => /review/i.test(s.name)),
+              'ready_to_merge': states.find(s => /ready\s*to\s*merge/i.test(s.name))
+                || states.find(s => /ready/i.test(s.name)),
+              'done': states.find(s => /done/i.test(s.name))
+                || states.find(s => /complete/i.test(s.name))
+                || states.find(s => s.type === 'completed'),
+              'cancelled': states.find(s => /cancel/i.test(s.name))
+                || states.find(s => s.type === 'cancelled'),
+            };
+
+            const newState = stateMap[targetState];
+
+            if (!newState) {
+              core.warning(`State "${targetState}" não encontrado no time Linear. States disponíveis: ${states.map(s => s.name).join(', ')}`);
+              return;
+            }
+
+            // ─── Buscar estado atual do issue ────────────────────────
+            const issueData = await linearQuery(`
+              query($issueId: String!) {
+                issue(id: $issueId) {
+                  id
+                  identifier
+                  state { id name type }
+                }
+              }
+            `, { issueId: linearIssueId });
+
+            const currentState = issueData.issue.state;
+
+            // Não regredir: se já está Done, não volta pra In Progress
+            const stateOrder = { 'backlog': 0, 'unstarted': 1, 'triage': 1, 'started': 2, 'completed': 3, 'cancelled': 3 };
+            const currentOrder = stateOrder[currentState.type] || 0;
+            const newOrder = stateOrder[newState.type] || 0;
+
+            if (newOrder < currentOrder && targetState !== 'cancelled') {
+              core.info(`Issue ${linearIdentifier} já está em "${currentState.name}" (${currentState.type}). Não regredir para "${newState.name}".`);
+              return;
+            }
+
+            if (currentState.id === newState.id) {
+              core.info(`Issue ${linearIdentifier} já está em "${newState.name}". Nada a fazer.`);
+              return;
+            }
+
+            // ─── Atualizar estado ────────────────────────────────────
+            await linearQuery(`
+              mutation($issueId: String!, $stateId: String!) {
+                issueUpdate(id: $issueId, input: { stateId: $stateId }) {
+                  success
+                  issue { id identifier state { name } }
+                }
+              }
+            `, { issueId: linearIssueId, stateId: newState.id });
+
+            core.info(`${linearIdentifier}: "${currentState.name}" → "${newState.name}"`);
+
+            // ─── Se merged, adicionar comentário de conclusão ────────
+            if (targetState === 'done') {
+              const pr = context.payload.pull_request;
+              await linearQuery(`
+                mutation($issueId: String!, $body: String!) {
+                  commentCreate(input: { issueId: $issueId, body: $body }) {
+                    success
+                  }
+                }
+              `, {
+                issueId: linearIssueId,
+                body: `PR [#${prNumber}](${pr.html_url}) foi mergeado por @${pr.merged_by?.login || pr.user.login}. Issue resolvido automaticamente.`,
+              });
+            }
+
+            // ─── Se cancelled, adicionar motivo ──────────────────────
+            if (targetState === 'cancelled') {
+              const pr = context.payload.pull_request;
+              await linearQuery(`
+                mutation($issueId: String!, $body: String!) {
+                  commentCreate(input: { issueId: $issueId, body: $body }) {
+                    success
+                  }
+                }
+              `, {
+                issueId: linearIssueId,
+                body: `PR [#${prNumber}](${pr.html_url}) foi fechado sem merge. Issue cancelado automaticamente.`,
+              });
+            }
