@@ -1,8 +1,10 @@
 name: CodeRabbit → Linear Issue (Auto)
 
-# Quando CodeRabbit posta/edita o walkthrough (resumo final do review),
-# cria UM issue consolidado no Linear com todos os findings.
-# Ciclo contínuo: PR → Review → Issue → Fix → Re-review → Novo Issue → Fix → ...até resolver
+# Quando CodeRabbit posta o walkthrough (resumo do review),
+# aguarda o review completar via polling, analisa findings,
+# cria o issue direto no Linear via API, e atribui ao projeto.
+#
+# Ciclo: PR → Review → Issue (Triage) → Auto-Claude fix → novo PR → re-review
 
 on:
   issue_comment:
@@ -21,74 +23,340 @@ jobs:
       contains(github.event.comment.body, 'walkthrough_start')
     runs-on: ubuntu-latest
     steps:
-      - name: Aguardar review completo
-        run: sleep 600
-
-      - name: Verificar e criar issue no Linear
+      - name: Analisar review e criar issue no Linear
         uses: actions/github-script@v7
+        env:
+          POLL_INTERVAL: "60"
+          MAX_WAIT: "900"
+          MIN_WALKTHROUGH_LENGTH: "3000"
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          LINEAR_PROJECT_ID: ${{ secrets.LINEAR_PROJECT_ID }}
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           script: |
             const prNumber = context.payload.issue.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const walkthrough = context.payload.comment.body;
-            const walkthroughCommentId = context.payload.comment.id;
+            const commentId = context.payload.comment.id;
 
-            // Verificar se o walkthrough indica problemas encontrados
-            const hasFindings = walkthrough.includes('⚠️') ||
-              walkthrough.includes('🔴') ||
-              walkthrough.includes('Changes requested') ||
-              walkthrough.includes('needs attention') ||
-              walkthrough.length > 2000;
+            const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL) * 1000;
+            const MAX_WAIT = parseInt(process.env.MAX_WAIT) * 1000;
+            const LINEAR_API_KEY = process.env.LINEAR_API_KEY;
+            const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID;
+            const LINEAR_PROJECT_ID = process.env.LINEAR_PROJECT_ID;
 
-            if (!hasFindings) {
-              console.log('Walkthrough sem findings significativos. Pulando.');
+            // ─── Helper: Linear GraphQL ──────────────────────────────
+            async function linearQuery(query, variables = {}) {
+              const res = await fetch('https://api.linear.app/graphql', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': LINEAR_API_KEY,
+                },
+                body: JSON.stringify({ query, variables }),
+              });
+              const json = await res.json();
+              if (json.errors) {
+                throw new Error(`Linear API: ${JSON.stringify(json.errors)}`);
+              }
+              return json.data;
+            }
+
+            // ─── 1. Polling: espera review completar ───────────────────
+            // CodeRabbit edita o comentário várias vezes. Esperamos até
+            // o body estabilizar (sem mudanças em 2 ciclos seguidos).
+
+            let stableBody = '';
+            let lastBody = '';
+            let stableCount = 0;
+            const startTime = Date.now();
+
+            core.info(`Monitorando comentário #${commentId} no PR #${prNumber}...`);
+
+            while (Date.now() - startTime < MAX_WAIT) {
+              await new Promise(r => setTimeout(r, POLL_INTERVAL));
+
+              const { data: comment } = await github.rest.issues.getComment({
+                owner, repo,
+                comment_id: commentId,
+              });
+
+              const currentBody = comment.body;
+              const elapsed = Math.round((Date.now() - startTime) / 1000);
+
+              if (currentBody === lastBody) {
+                stableCount++;
+                core.info(`[${elapsed}s] Comentário estável (${stableCount}/2)`);
+                if (stableCount >= 2) {
+                  stableBody = currentBody;
+                  core.info(`Review estabilizou após ${elapsed}s`);
+                  break;
+                }
+              } else {
+                stableCount = 0;
+                core.info(`[${elapsed}s] Comentário ainda sendo editado (${currentBody.length} chars)`);
+              }
+
+              lastBody = currentBody;
+            }
+
+            if (!stableBody) {
+              stableBody = lastBody;
+              core.warning('Timeout atingido. Usando última versão do comentário.');
+            }
+
+            // ─── 2. Análise de findings ────────────────────────────────
+            const signals = [];
+            let score = 0;
+
+            // Indicadores fortes
+            if (stableBody.includes('⚠️')) { signals.push('warning'); score += 3; }
+            if (stableBody.includes('🔴')) { signals.push('critical'); score += 5; }
+            if (/changes\s+requested/i.test(stableBody)) { signals.push('changes-requested'); score += 4; }
+            if (/needs\s+attention/i.test(stableBody)) { signals.push('needs-attention'); score += 3; }
+
+            // Categorias específicas
+            if (/\b(security|vulnerability|injection|xss|csrf)\b/i.test(stableBody)) { signals.push('security'); score += 5; }
+            if (/\b(bug|error|crash|exception|fail)\b/i.test(stableBody)) { signals.push('bug'); score += 3; }
+            if (/\b(performance|memory leak|n\+1|slow)\b/i.test(stableBody)) { signals.push('performance'); score += 2; }
+
+            // Bônus de tamanho (só se tiver outros sinais)
+            const minLength = parseInt(process.env.MIN_WALKTHROUGH_LENGTH);
+            if (stableBody.length > minLength && score > 0) { score += 1; }
+
+            core.info(`Score: ${score} | Sinais: ${signals.join(', ') || 'nenhum'}`);
+
+            if (score < 3) {
+              core.info('Score abaixo do threshold (3). Nenhum issue necessário.');
               return;
             }
 
-            // Deduplicação por walkthrough (não por PR inteiro)
-            // Permite o loop: review → issue → fix → re-review → novo issue
-            // Só bloqueia se já pedimos issue para ESTE MESMO walkthrough comment
-            const { data: prComments } = await github.rest.issues.listComments({
+            // ─── 3. Deduplicação ───────────────────────────────────────
+            let page = 1;
+            let alreadyCreated = false;
+
+            while (true) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner, repo,
+                issue_number: prNumber,
+                per_page: 100,
+                page,
+              });
+
+              if (comments.length === 0) break;
+
+              alreadyCreated = comments.some(c =>
+                c.user.login === 'github-actions[bot]' &&
+                c.body.includes('<!-- linear-issue-created -->')
+              );
+
+              if (alreadyCreated) break;
+              if (comments.length < 100) break;
+              page++;
+            }
+
+            if (alreadyCreated) {
+              core.info('Issue já criado nesse PR. Pulando.');
+              return;
+            }
+
+            // ─── 4. Contexto do PR ─────────────────────────────────────
+            const { data: pr } = await github.rest.pulls.get({
               owner, repo,
-              issue_number: prNumber,
+              pull_number: prNumber,
+            });
+
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner, repo,
+              pull_number: prNumber,
               per_page: 100,
             });
 
-            const marker = `<!-- walkthrough-${walkthroughCommentId} -->`;
-            const alreadyRequested = prComments.some(c =>
-              c.user.login === 'github-actions[bot]' &&
-              c.body.includes(marker)
-            );
+            const fileList = files.map(f => `- \`${f.filename}\` (+${f.additions}/-${f.deletions})`).join('\n');
+            const severity = score >= 8 ? 'Urgent' : score >= 5 ? 'High' : 'Medium';
 
-            if (alreadyRequested) {
-              console.log(`Issue já solicitado para este walkthrough (comment ${walkthroughCommentId}). Pulando.`);
+            // Mapear severidade → prioridade Linear (0=none, 1=urgent, 2=high, 3=medium, 4=low)
+            const priorityMap = { 'Urgent': 1, 'High': 2, 'Medium': 3 };
+            const linearPriority = priorityMap[severity] || 3;
+
+            // ─── 5. Labels no PR ───────────────────────────────────────
+            const ghLabels = ['coderabbit-review'];
+            if (signals.includes('security')) ghLabels.push('security');
+            if (signals.includes('bug')) ghLabels.push('bug');
+            if (signals.includes('performance')) ghLabels.push('performance');
+            if (signals.includes('critical')) ghLabels.push('critical');
+            if (signals.includes('changes-requested')) ghLabels.push('changes-requested');
+            ghLabels.push(`severity:${severity.toLowerCase()}`);
+
+            for (const label of ghLabels) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label });
+              } catch {
+                const colors = {
+                  'coderabbit-review': '7C3AED', 'security': 'DC2626',
+                  'bug': 'EF4444', 'performance': 'F59E0B', 'critical': 'B91C1C',
+                  'changes-requested': 'EA580C', 'severity:urgent': 'DC2626',
+                  'severity:high': 'F97316', 'severity:medium': 'FBBF24',
+                };
+                await github.rest.issues.createLabel({
+                  owner, repo, name: label,
+                  color: colors[label] || '6B7280',
+                });
+              }
+            }
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: prNumber, labels: ghLabels,
+            });
+
+            core.info(`Labels GitHub: ${ghLabels.join(', ')}`);
+
+            // ─── 6. Buscar workflow states do time no Linear ───────────
+            const teamData = await linearQuery(`
+              query($teamId: String!) {
+                team(id: $teamId) {
+                  states { nodes { id name type } }
+                  labels { nodes { id name } }
+                }
+              }
+            `, { teamId: LINEAR_TEAM_ID });
+
+            const states = teamData.team.states.nodes;
+            const linearLabels = teamData.team.labels.nodes;
+
+            // Encontrar o state "Triage" ou "Backlog" ou "Todo" para issue novo
+            const triageState = states.find(s => /triage/i.test(s.name))
+              || states.find(s => /backlog/i.test(s.name))
+              || states.find(s => /todo/i.test(s.name))
+              || states.find(s => s.type === 'backlog');
+
+            if (!triageState) {
+              core.setFailed('Nenhum state inicial encontrado no Linear (Triage/Backlog/Todo)');
               return;
             }
 
-            // Contar ciclo de review (quantas vezes já pedimos issue nesse PR)
-            const reviewCycle = prComments.filter(c =>
-              c.user.login === 'github-actions[bot]' &&
-              c.body.includes('@coderabbitai create a single linear issue')
-            ).length + 1;
+            // ─── 7. Encontrar ou criar labels no Linear ───────────────
+            const labelIds = [];
 
-            // Pedir pro CodeRabbit criar issue consolidado para este ciclo
+            for (const signal of signals) {
+              const labelName = signal.charAt(0).toUpperCase() + signal.slice(1);
+              let linearLabel = linearLabels.find(l => l.name.toLowerCase() === signal.toLowerCase());
+
+              if (!linearLabel) {
+                try {
+                  const created = await linearQuery(`
+                    mutation($teamId: String!, $name: String!) {
+                      issueLabelCreate(input: { teamId: $teamId, name: $name }) {
+                        issueLabel { id name }
+                      }
+                    }
+                  `, { teamId: LINEAR_TEAM_ID, name: labelName });
+                  linearLabel = created.issueLabelCreate.issueLabel;
+                } catch (e) {
+                  core.warning(`Não foi possível criar label "${labelName}": ${e.message}`);
+                  continue;
+                }
+              }
+
+              if (linearLabel) labelIds.push(linearLabel.id);
+            }
+
+            // ─── 8. Criar issue no Linear ──────────────────────────────
+            const issueTitle = `[CodeRabbit] ${repo}#${prNumber}: ${pr.title}`;
+
+            const issueDescription = [
+              `## Code Review Findings`,
+              '',
+              `**Repositório:** [${owner}/${repo}](https://github.com/${owner}/${repo})`,
+              `**PR:** [#${prNumber} — ${pr.title}](${pr.html_url})`,
+              `**Branch:** \`${pr.head.ref}\` → \`${pr.base.ref}\``,
+              `**Autor:** @${pr.user.login}`,
+              `**Severidade:** ${severity} (score: ${score})`,
+              `**Sinais:** ${signals.join(', ')}`,
+              '',
+              `## Arquivos Alterados`,
+              '',
+              fileList,
+              '',
+              `## Review Completo`,
+              '',
+              `O CodeRabbit identificou os seguintes problemas neste PR.`,
+              `Veja o [walkthrough completo](${context.payload.comment.html_url}) para detalhes.`,
+              '',
+              `## Ação Necessária`,
+              '',
+              `- [ ] Revisar os findings do CodeRabbit`,
+              `- [ ] Implementar as correções necessárias`,
+              `- [ ] Abrir novo PR com os fixes`,
+            ].join('\n');
+
+            const createInput = {
+              teamId: LINEAR_TEAM_ID,
+              title: issueTitle,
+              description: issueDescription,
+              priority: linearPriority,
+              stateId: triageState.id,
+            };
+
+            if (labelIds.length > 0) {
+              createInput.labelIds = labelIds;
+            }
+
+            if (LINEAR_PROJECT_ID) {
+              createInput.projectId = LINEAR_PROJECT_ID;
+            }
+
+            const issueData = await linearQuery(`
+              mutation($input: IssueCreateInput!) {
+                issueCreate(input: $input) {
+                  success
+                  issue {
+                    id
+                    identifier
+                    url
+                  }
+                }
+              }
+            `, { input: createInput });
+
+            if (!issueData.issueCreate.success) {
+              core.setFailed('Falha ao criar issue no Linear');
+              return;
+            }
+
+            const issue = issueData.issueCreate.issue;
+            core.info(`Issue criado: ${issue.identifier} → ${issue.url}`);
+
+            // Se tem projeto, adicionar ao projeto
+            if (LINEAR_PROJECT_ID) {
+              core.info(`Issue adicionado ao projeto ${LINEAR_PROJECT_ID}`);
+            }
+
+            // ─── 9. Comentar no PR com link do issue ───────────────────
+            const prComment = [
+              `<!-- linear-issue-created -->`,
+              `<!-- linear-issue-id:${issue.id} -->`,
+              `<!-- linear-issue-identifier:${issue.identifier} -->`,
+              '',
+              `### Linear Issue Criado`,
+              '',
+              `| Campo | Valor |`,
+              `|-------|-------|`,
+              `| **Issue** | [${issue.identifier}](${issue.url}) |`,
+              `| **Status** | ${triageState.name} |`,
+              `| **Prioridade** | ${severity} |`,
+              `| **Score** | ${score} |`,
+              `| **Sinais** | ${signals.join(', ')} |`,
+              '',
+              `> O status do issue será atualizado automaticamente conforme o PR avança.`,
+              `> Merge → Done | Close → Cancelled | Review aprovado → In Review`,
+            ].join('\n');
+
             await github.rest.issues.createComment({
               owner, repo,
               issue_number: prNumber,
-              body: [
-                marker,
-                `@coderabbitai create a single linear issue that consolidates ALL review findings from this PR.`,
-                '',
-                `**Review cycle #${reviewCycle}** — This is ${reviewCycle === 1 ? 'the initial review' : 'a follow-up review after fixes'}.`,
-                '',
-                'Include:',
-                '- All code review comments and suggestions from this review cycle',
-                '- Files affected with line references',
-                '- Priority based on severity of issues found',
-                reviewCycle > 1 ? '- Note which issues are NEW vs recurring from previous reviews' : '',
-              ].filter(Boolean).join('\n'),
+              body: prComment,
             });
 
-            console.log(`Issue consolidado solicitado no Linear (ciclo #${reviewCycle}).`);
+            core.info(`Comentário com link do issue postado no PR #${prNumber}`);
