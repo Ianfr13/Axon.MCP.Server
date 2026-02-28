@@ -1,0 +1,389 @@
+name: Merge Conflict Resolver (Auto)
+
+# Quando a branch base muda, verifica todos os PRs abertos
+# e resolve conflitos automaticamente. Usa git strategies primeiro,
+# depois Claude AI se necessário.
+#
+# Fluxo: Push na base → Detecta conflitos → Resolve → Push no PR
+# Se falhar: Label no PR + Issue no Linear
+
+on:
+  push:
+    branches: [main, develop, master]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR específico para resolver (ou vazio para todos)'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  resolve-conflicts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - name: Resolver conflitos
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          LINEAR_PROJECT_ID: ${{ secrets.LINEAR_PROJECT_ID }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const { execSync } = require('child_process');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const LINEAR_API_KEY = process.env.LINEAR_API_KEY;
+            const LINEAR_TEAM_ID = process.env.LINEAR_TEAM_ID;
+            const LINEAR_PROJECT_ID = process.env.LINEAR_PROJECT_ID;
+            const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+            function run(cmd) {
+              try {
+                return execSync(cmd, { encoding: 'utf8', timeout: 60000 }).trim();
+              } catch (e) {
+                return null;
+              }
+            }
+
+            // ─── Helper: Linear GraphQL ──────────────────────────────
+            async function linearQuery(query, variables = {}) {
+              const res = await fetch('https://api.linear.app/graphql', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': LINEAR_API_KEY,
+                },
+                body: JSON.stringify({ query, variables }),
+              });
+              const json = await res.json();
+              if (json.errors) throw new Error(`Linear: ${JSON.stringify(json.errors)}`);
+              return json.data;
+            }
+
+            // ─── Helper: AI via OpenRouter ─────────────────────────────
+            async function resolveWithAI(baseContent, headContent, conflictBlock, filePath) {
+              if (!OPENROUTER_API_KEY) return null;
+
+              const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                },
+                body: JSON.stringify({
+                  model: 'anthropic/claude-sonnet-4',
+                  max_tokens: 4096,
+                  messages: [{
+                    role: 'user',
+                    content: `You are resolving a git merge conflict in the file \`${filePath}\`.
+
+            Here is the conflict block:
+            \`\`\`
+            ${conflictBlock}
+            \`\`\`
+
+            The content between <<<<<<< HEAD and ======= is the CURRENT branch (PR changes).
+            The content between ======= and >>>>>>> is the INCOMING branch (base branch updates).
+
+            Rules:
+            - Preserve ALL functionality from BOTH sides
+            - If both sides modify the same lines, intelligently merge them
+            - For imports: include all imports from both sides, remove duplicates
+            - For config/package files: merge both additions
+            - Output ONLY the resolved code, no conflict markers, no explanation
+            - If you truly cannot resolve safely, respond with exactly: CANNOT_RESOLVE
+
+            Resolved code:`
+                  }],
+                }),
+              });
+
+              const json = await res.json();
+              const text = json.choices?.[0]?.message?.content?.trim();
+              if (!text || text === 'CANNOT_RESOLVE') return null;
+              return text;
+            }
+
+            // ─── 1. Listar PRs com conflito ─────────────────────────
+            const specificPR = context.payload.inputs?.pr_number;
+            let prs;
+
+            if (specificPR) {
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: parseInt(specificPR),
+              });
+              prs = [pr];
+            } else {
+              const { data: allPrs } = await github.rest.pulls.list({
+                owner, repo, state: 'open', per_page: 100,
+              });
+              prs = allPrs;
+            }
+
+            core.info(`Verificando ${prs.length} PRs abertos...`);
+
+            const results = { resolved: [], failed: [], clean: [] };
+
+            for (const pr of prs) {
+              // Refresh mergeable status
+              let mergeable = pr.mergeable;
+              if (mergeable === null) {
+                await new Promise(r => setTimeout(r, 3000));
+                const { data: refreshed } = await github.rest.pulls.get({
+                  owner, repo, pull_number: pr.number,
+                });
+                mergeable = refreshed.mergeable;
+              }
+
+              if (mergeable !== false) {
+                results.clean.push(pr.number);
+                continue;
+              }
+
+              core.info(`\n─── PR #${pr.number}: ${pr.title} ───`);
+              core.info(`Branch: ${pr.head.ref} → ${pr.base.ref}`);
+
+              // ─── 2. Tentar resolver ─────────────────────────────
+              const headRef = pr.head.ref;
+              const baseRef = pr.base.ref;
+
+              // Setup git
+              run('git config user.name "merge-bot[bot]"');
+              run('git config user.email "merge-bot[bot]@users.noreply.github.com"');
+
+              // Fetch latest
+              run(`git fetch origin ${baseRef}`);
+              run(`git fetch origin ${headRef}`);
+
+              // Checkout PR branch
+              run(`git checkout -B conflict-resolve origin/${headRef}`);
+
+              // Tentar merge com strategy
+              const mergeResult = run(`git merge origin/${baseRef} --no-edit`);
+
+              if (mergeResult !== null) {
+                core.info('Merge limpo (sem conflito real). Pulando.');
+                run('git merge --abort 2>/dev/null || true');
+                run('git checkout - 2>/dev/null || true');
+                results.clean.push(pr.number);
+                continue;
+              }
+
+              // Tem conflito — pegar arquivos conflitantes
+              const conflictFiles = run('git diff --name-only --diff-filter=U');
+              if (!conflictFiles) {
+                run('git merge --abort');
+                core.warning('Não conseguiu identificar arquivos em conflito.');
+                results.failed.push({ pr: pr.number, reason: 'no conflict files detected' });
+                continue;
+              }
+
+              const files = conflictFiles.split('\n').filter(Boolean);
+              core.info(`Arquivos em conflito: ${files.join(', ')}`);
+
+              let allResolved = true;
+
+              for (const file of files) {
+                core.info(`  Resolvendo: ${file}`);
+
+                // Ler conteúdo com conflitos
+                const fs = require('fs');
+                let content;
+                try {
+                  content = fs.readFileSync(file, 'utf8');
+                } catch {
+                  core.warning(`  Não conseguiu ler ${file}`);
+                  allResolved = false;
+                  continue;
+                }
+
+                // Tentar strategies automáticas para tipos conhecidos
+                const isLockfile = /package-lock\.json|yarn\.lock|pnpm-lock|Cargo\.lock|poetry\.lock|uv\.lock/i.test(file);
+                const isGenerated = /\.generated\.|\.min\./i.test(file);
+
+                if (isLockfile || isGenerated) {
+                  // Para lockfiles: aceitar versão do PR e regenerar depois
+                  run(`git checkout --theirs "${file}"`);
+                  run(`git add "${file}"`);
+                  core.info(`  ${file}: resolvido com --theirs (lockfile/generated)`);
+                  continue;
+                }
+
+                // Extrair blocos de conflito
+                const conflictRegex = /<<<<<<< HEAD\n([\s\S]*?)=======\n([\s\S]*?)>>>>>>> [^\n]+/g;
+                let hasConflicts = conflictRegex.test(content);
+                conflictRegex.lastIndex = 0;
+
+                if (!hasConflicts) {
+                  // Arquivo marcado como conflito mas sem markers (binary?)
+                  run(`git checkout --theirs "${file}"`);
+                  run(`git add "${file}"`);
+                  core.info(`  ${file}: resolvido com --theirs (sem markers)`);
+                  continue;
+                }
+
+                // Tentar resolver cada bloco com AI
+                let resolvedContent = content;
+                let match;
+                let aiSuccess = true;
+
+                while ((match = conflictRegex.exec(content)) !== null) {
+                  const fullBlock = match[0];
+                  const resolution = await resolveWithAI(match[1], match[2], fullBlock, file);
+
+                  if (resolution) {
+                    resolvedContent = resolvedContent.replace(fullBlock, resolution);
+                    core.info(`  Bloco resolvido com AI`);
+                  } else {
+                    core.warning(`  AI não conseguiu resolver bloco em ${file}`);
+                    aiSuccess = false;
+                    break;
+                  }
+                }
+
+                if (aiSuccess && !resolvedContent.includes('<<<<<<<')) {
+                  fs.writeFileSync(file, resolvedContent);
+                  run(`git add "${file}"`);
+                  core.info(`  ${file}: resolvido com AI`);
+                } else {
+                  allResolved = false;
+                  core.warning(`  ${file}: NÃO resolvido`);
+                }
+              }
+
+              if (allResolved) {
+                // Commit e push
+                const commitMsg = `fix: auto-resolve merge conflicts with ${pr.base.ref}`;
+                run(`git commit -m "${commitMsg}"`);
+                const pushResult = run(`git push origin conflict-resolve:${headRef}`);
+
+                if (pushResult !== null) {
+                  core.info(`PR #${pr.number}: Conflitos resolvidos e push feito!`);
+                  results.resolved.push(pr.number);
+
+                  // Remover label de conflito se existir
+                  try {
+                    await github.rest.issues.removeLabel({
+                      owner, repo, issue_number: pr.number, name: 'merge-conflict',
+                    });
+                  } catch {}
+
+                  // Comentar no PR
+                  await github.rest.issues.createComment({
+                    owner, repo,
+                    issue_number: pr.number,
+                    body: [
+                      `### Merge Conflicts Resolvidos`,
+                      '',
+                      `Conflitos com \`${baseRef}\` foram resolvidos automaticamente.`,
+                      '',
+                      `**Arquivos resolvidos:** ${files.map(f => `\`${f}\``).join(', ')}`,
+                      '',
+                      `> Verifique se o resultado está correto antes de fazer merge.`,
+                    ].join('\n'),
+                  });
+                } else {
+                  core.warning(`PR #${pr.number}: Push falhou`);
+                  allResolved = false;
+                }
+              }
+
+              if (!allResolved) {
+                results.failed.push({ pr: pr.number, files });
+
+                // Label no PR
+                try {
+                  await github.rest.issues.getLabel({ owner, repo, name: 'merge-conflict' });
+                } catch {
+                  await github.rest.issues.createLabel({
+                    owner, repo, name: 'merge-conflict', color: 'DC2626',
+                  });
+                }
+
+                await github.rest.issues.addLabels({
+                  owner, repo, issue_number: pr.number,
+                  labels: ['merge-conflict'],
+                });
+
+                // Criar issue no Linear se tem API key
+                if (LINEAR_API_KEY && LINEAR_TEAM_ID) {
+                  const teamData = await linearQuery(`
+                    query($teamId: String!) {
+                      team(id: $teamId) {
+                        states { nodes { id name type } }
+                      }
+                    }
+                  `, { teamId: LINEAR_TEAM_ID });
+
+                  const todoState = teamData.team.states.nodes.find(s => /todo/i.test(s.name))
+                    || teamData.team.states.nodes.find(s => s.type === 'unstarted');
+
+                  if (todoState) {
+                    const input = {
+                      teamId: LINEAR_TEAM_ID,
+                      title: `[Merge Conflict] ${repo}#${pr.number}: ${pr.title}`,
+                      description: [
+                        `## Merge Conflict não resolvido automaticamente`,
+                        '',
+                        `**PR:** [#${pr.number} — ${pr.title}](${pr.html_url})`,
+                        `**Branch:** \`${headRef}\` → \`${baseRef}\``,
+                        `**Arquivos:** ${files.map(f => `\`${f}\``).join(', ')}`,
+                        '',
+                        `O bot tentou resolver automaticamente (git strategies + AI) mas não conseguiu.`,
+                        `Resolução manual necessária.`,
+                      ].join('\n'),
+                      priority: 2,
+                      stateId: todoState.id,
+                    };
+
+                    if (LINEAR_PROJECT_ID) input.projectId = LINEAR_PROJECT_ID;
+
+                    await linearQuery(`
+                      mutation($input: IssueCreateInput!) {
+                        issueCreate(input: $input) { success issue { identifier url } }
+                      }
+                    `, { input });
+                  }
+                }
+
+                // Comentar no PR
+                await github.rest.issues.createComment({
+                  owner, repo,
+                  issue_number: pr.number,
+                  body: [
+                    `### Merge Conflict Detectado`,
+                    '',
+                    `Conflitos com \`${baseRef}\` não puderam ser resolvidos automaticamente.`,
+                    '',
+                    `**Arquivos em conflito:** ${files.map(f => `\`${f}\``).join(', ')}`,
+                    '',
+                    `> Resolução manual necessária. Issue criado no Linear.`,
+                  ].join('\n'),
+                });
+              }
+
+              // Cleanup
+              run('git merge --abort 2>/dev/null || true');
+              run('git checkout - 2>/dev/null || true');
+            }
+
+            // ─── Resumo ──────────────────────────────────────────────
+            core.info('\n━━━ Resumo ━━━');
+            core.info(`Limpos: ${results.clean.length}`);
+            core.info(`Resolvidos: ${results.resolved.length} (${results.resolved.join(', ') || '-'})`);
+            core.info(`Falharam: ${results.failed.length} (${results.failed.map(f => `#${f.pr}`).join(', ') || '-'})`);
+
+            if (results.failed.length > 0) {
+              core.warning(`${results.failed.length} PR(s) com conflitos não resolvidos.`);
+            }
