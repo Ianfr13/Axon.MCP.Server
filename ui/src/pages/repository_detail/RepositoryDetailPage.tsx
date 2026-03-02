@@ -10,11 +10,13 @@ import {
   type RepositoryResponse,
   type RepositoryStatsResponse,
   type RepositorySyncAttempt,
+  type SyncOptions,
 } from "../../services/api";
 import { JobStatusEnum, RepositoryStatusEnum, SourceControlProviderEnum } from "../../types/enums";
 import { RepositoryStats } from "../../components/Statistics/RepositoryStats";
 import SampleDataTabs from "../../components/Repository/SampleDataTabs";
 import { AnalysisResults } from "../../components/Repository/AnalysisResults";
+import ConfirmationModal from "../../components/confirmation_modal/ConfirmationModal";
 import styles from "./RepositoryDetailPage.module.css";
 
 type RouteParams = {
@@ -59,11 +61,17 @@ function formatBytes(value: number): string {
 }
 
 function repositoryStatusLabel(status: RepositoryStatusEnum): string {
-  return status.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  return status
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function jobStatusLabel(status: JobStatusEnum): string {
-  return status.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  return status
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export default function RepositoryDetailPage() {
@@ -76,6 +84,11 @@ export default function RepositoryDetailPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [syncOptions, setSyncOptions] = useState<SyncOptions>({
+    index_md_files: true,
+    index_txt_files: false,
+  });
   const [pageError, setPageError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -109,7 +122,8 @@ export default function RepositoryDetailPage() {
         setStats(statsData);
         setHistory(historyData);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to load repository details";
+        const message =
+          error instanceof Error ? error.message : "Failed to load repository details";
         setPageError(message);
       } finally {
         if (silent) {
@@ -119,22 +133,29 @@ export default function RepositoryDetailPage() {
         }
       }
     },
-    [repositoryIdNumber]
+    [repositoryIdNumber],
   );
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  const triggerSync = async () => {
-    if (!repository) {
-      return;
-    }
+  const openSyncDialog = () => {
+    if (!repository) return;
+    setSyncOptions({
+      index_md_files: repository.index_md_files ?? true,
+      index_txt_files: repository.index_txt_files ?? false,
+    });
+    setShowSyncDialog(true);
+  };
 
+  const confirmSync = async () => {
+    if (!repository) return;
     try {
       setSyncing(true);
+      setShowSyncDialog(false);
       setActionError(null);
-      await syncRepository(repository.id);
+      await syncRepository(repository.id, syncOptions);
       setNotification(`Manual sync queued for ${repository.name}.`);
       void loadData({ silent: true });
     } catch (error) {
@@ -212,7 +233,11 @@ export default function RepositoryDetailPage() {
             <Link className={styles.secondary_button} to="/repositories">
               Back to repositories
             </Link>
-            <button className={styles.primary_button} type="button" onClick={() => loadData({ silent: false })}>
+            <button
+              className={styles.primary_button}
+              type="button"
+              onClick={() => loadData({ silent: false })}
+            >
               Retry
             </button>
           </div>
@@ -234,7 +259,9 @@ export default function RepositoryDetailPage() {
           </div>
           <div className={styles.title_row}>
             <h1 className={styles.detail_title}>{repository.name}</h1>
-            <span className={`${styles.status_pill} ${styles[`status_${repository.status.toLowerCase()}`] ?? styles.status_default}`}>
+            <span
+              className={`${styles.status_pill} ${styles[`status_${repository.status.toLowerCase()}`] ?? styles.status_default}`}
+            >
               {repositoryStatusLabel(repository.status)}
             </span>
           </div>
@@ -245,8 +272,8 @@ export default function RepositoryDetailPage() {
               {repository.provider === SourceControlProviderEnum.github
                 ? `GitHub #${repository.github_repo_id}`
                 : repository.provider === SourceControlProviderEnum.azuredevops
-                ? `Azure DevOps ${repository.azuredevops_repo_id || ''}`
-                : `GitLab #${repository.gitlab_project_id}`}
+                  ? `Azure DevOps ${repository.azuredevops_repo_id || ""}`
+                  : `GitLab #${repository.gitlab_project_id}`}
             </span>
             <span>Default branch {repository.default_branch}</span>
           </div>
@@ -261,7 +288,7 @@ export default function RepositoryDetailPage() {
           <button
             className={styles.primary_button}
             type="button"
-            onClick={triggerSync}
+            onClick={openSyncDialog}
             disabled={syncing}
           >
             {syncing ? "Triggering..." : "Trigger sync"}
@@ -305,11 +332,15 @@ export default function RepositoryDetailPage() {
           </article>
           <article className={styles.summary_card}>
             <span className={styles.summary_label}>Symbols indexed</span>
-            <span className={styles.summary_value}>{repository.total_symbols.toLocaleString()}</span>
+            <span className={styles.summary_value}>
+              {repository.total_symbols.toLocaleString()}
+            </span>
           </article>
           <article className={styles.summary_card}>
             <span className={styles.summary_label}>Last sync</span>
-            <span className={styles.summary_value}>{formatTimestamp(repository.last_synced_at)}</span>
+            <span className={styles.summary_value}>
+              {formatTimestamp(repository.last_synced_at)}
+            </span>
           </article>
           <article className={styles.summary_card}>
             <span className={styles.summary_label}>Last commit</span>
@@ -317,12 +348,17 @@ export default function RepositoryDetailPage() {
           </article>
           <article className={styles.summary_card}>
             <span className={styles.summary_label}>URL</span>
-            <a className={styles.summary_link} href={repository.url} target="_blank" rel="noreferrer">
+            <a
+              className={styles.summary_link}
+              href={repository.url}
+              target="_blank"
+              rel="noreferrer"
+            >
               {repository.provider === SourceControlProviderEnum.github
                 ? "Open in GitHub"
                 : repository.provider === SourceControlProviderEnum.azuredevops
-                ? "Open in Azure DevOps"
-                : "Open in GitLab"}
+                  ? "Open in Azure DevOps"
+                  : "Open in GitLab"}
             </a>
           </article>
         </div>
@@ -363,7 +399,9 @@ export default function RepositoryDetailPage() {
                 <tr key={attempt.id}>
                   <td>{attempt.id}</td>
                   <td>
-                    <span className={`${styles.status_pill} ${styles[`job_${attempt.status.toLowerCase()}`] ?? styles.status_default}`}>
+                    <span
+                      className={`${styles.status_pill} ${styles[`job_${attempt.status.toLowerCase()}`] ?? styles.status_default}`}
+                    >
                       {jobStatusLabel(attempt.status)}
                     </span>
                   </td>
@@ -376,15 +414,60 @@ export default function RepositoryDetailPage() {
             </tbody>
           </table>
         ) : (
-          <p className={styles.section_hint}>No sync attempts have been recorded for this repository.</p>
+          <p className={styles.section_hint}>
+            No sync attempts have been recorded for this repository.
+          </p>
         )}
       </section>
 
       <section className={styles.samples_section}>
         <SampleDataTabs repositoryId={repository.id} />
       </section>
+
+      <ConfirmationModal
+        isOpen={showSyncDialog}
+        title="Sync Options"
+        message={
+          <div>
+            <p>
+              Configure document indexing for <strong>{repository.name}</strong>:
+            </p>
+            <div
+              style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}
+            >
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={syncOptions.index_md_files ?? true}
+                  onChange={(e) =>
+                    setSyncOptions((prev) => ({ ...prev, index_md_files: e.target.checked }))
+                  }
+                />
+                Index .md files (Markdown)
+              </label>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={syncOptions.index_txt_files ?? false}
+                  onChange={(e) =>
+                    setSyncOptions((prev) => ({ ...prev, index_txt_files: e.target.checked }))
+                  }
+                />
+                Index .txt files (Plain text)
+              </label>
+            </div>
+          </div>
+        }
+        confirmText="Start Sync"
+        variant="info"
+        onConfirm={confirmSync}
+        onCancel={() => setShowSyncDialog(false)}
+        isLoading={syncing}
+      />
     </div>
   );
 }
-
-

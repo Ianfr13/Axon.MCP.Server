@@ -97,6 +97,10 @@ class RepositoryResponse(BaseModel):
     github_repo_id: Optional[int] = None
     github_owner: Optional[str] = None
 
+    # Document indexing options
+    index_md_files: bool = True
+    index_txt_files: bool = False
+
     # Helpful URLs for related operations (computed)
     search_url: Optional[str] = None  # URL to search this repository
     sync_url: Optional[str] = None  # URL to trigger sync
@@ -109,6 +113,13 @@ class CommitInfo(BaseModel):
     message: str
     author_name: Optional[str] = None
     committed_date: Optional[datetime] = None
+
+
+class SyncOptionsBody(BaseModel):
+    """Optional body for sync trigger with document indexing preferences."""
+
+    index_md_files: Optional[bool] = None
+    index_txt_files: Optional[bool] = None
 
 
 class RepositorySyncResponse(BaseModel):

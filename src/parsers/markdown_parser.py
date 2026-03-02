@@ -6,18 +6,18 @@ from src.parsers.base_parser import BaseParser, ParseResult, ParsedSymbol
 
 
 class MarkdownParser(BaseParser):
-    """Markdown documentation parser."""
-    
+    """Markdown and plain text documentation parser."""
+
     def __init__(self):
         self.language = LanguageEnum.MARKDOWN
-    
+
     def get_language(self) -> LanguageEnum:
         """Return the language this parser handles."""
         return self.language
-    
+
     def is_supported(self, file_path: Path) -> bool:
-        """Check if file is a Markdown file."""
-        return file_path.suffix.lower() in ['.md', '.markdown']
+        """Check if file is a Markdown or plain text file."""
+        return file_path.suffix.lower() in ['.md', '.markdown', '.txt']
     
     def parse(self, code: str, file_path: Optional[str] = None) -> ParseResult:
         """
@@ -34,11 +34,34 @@ class MarkdownParser(BaseParser):
         
         try:
             # Extract headings as document sections
-            symbols.extend(self._extract_headings(code, file_path))
-            
+            heading_symbols = self._extract_headings(code, file_path)
+            symbols.extend(heading_symbols)
+
             # Extract code blocks as examples
             symbols.extend(self._extract_code_blocks(code, file_path))
-            
+
+            # Fallback for plain text files with no headings:
+            # create a single DOCUMENT_SECTION so the content still gets indexed
+            if not heading_symbols and code.strip():
+                title = Path(file_path).stem if file_path else "Untitled"
+                preview = code[:2000]
+                lines = code.split('\n')
+                symbols.append(ParsedSymbol(
+                    kind=SymbolKindEnum.DOCUMENT_SECTION,
+                    name=title,
+                    start_line=1,
+                    end_line=len(lines),
+                    start_column=0,
+                    end_column=len(lines[-1]) if lines else 0,
+                    signature=title,
+                    documentation=preview,
+                    structured_docs={
+                        'level': 1,
+                        'title': title,
+                        'content_preview': preview[:500],
+                    }
+                ))
+
         except Exception as e:
             errors.append(f"Markdown parsing error: {str(e)}")
         

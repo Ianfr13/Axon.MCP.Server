@@ -41,10 +41,25 @@ class DiscoveryStep(PipelineStep):
         else:
             raise ValueError(f"Unsupported provider: {repo.provider}")
 
+        # Build custom extensions list based on per-repo doc indexing flags
+        doc_extensions = []
+        if getattr(repo, 'index_md_files', True):
+            doc_extensions.extend([".md", ".markdown"])
+        if getattr(repo, 'index_txt_files', False):
+            doc_extensions.append(".txt")
+
+        base_extensions = [
+            ".cs", ".js", ".ts", ".vue", ".tsx", ".jsx",
+            ".csproj", ".sln", ".json",
+            ".sql", ".ddl",
+            ".py", ".go", ".java",
+        ] + doc_extensions
+
         # Get file tree
         files = await asyncio.to_thread(
             repo_manager.get_file_tree,
-            ctx.repo_path
+            ctx.repo_path,
+            extensions=base_extensions,
         )
         
         # Sort files path alphabetically to ensure files in the same project 

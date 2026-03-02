@@ -12,6 +12,7 @@ from src.api.schemas.repositories import (
     RepositoryCreate,
     RepositoryResponse,
     RepositorySyncResponse,
+    SyncOptionsBody,
     GitLabDiscoveryResponse,
     AzureDevOpsDiscoveryResponse,
     GitHubDiscoveryResponse,
@@ -156,13 +157,14 @@ async def get_repository_samples(
 @router.post("/repositories/{repository_id}/sync", response_model=RepositorySyncResponse)
 async def trigger_repository_sync(
     repository_id: int,
+    sync_options: SyncOptionsBody = SyncOptionsBody(),
     session: AsyncSession = Depends(get_db_session),
 ) -> RepositorySyncResponse:
-    """Trigger a manual repository synchronization."""
+    """Trigger a manual repository synchronization with optional indexing options."""
 
     service = RepositoryService(session)
     try:
-        response = await service.trigger_sync(repository_id)
+        response = await service.trigger_sync(repository_id, sync_options=sync_options)
     except ValueError as exc:  # repository missing
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -13,6 +13,7 @@ from src.api.schemas.repositories import (
     RepositoryCreate,
     RepositoryResponse,
     RepositorySyncResponse,
+    SyncOptionsBody,
     GitLabProjectDiscovery,
     GitLabDiscoveryResponse,
     AzureDevOpsRepositoryDiscovery,
@@ -145,10 +146,21 @@ class RepositoryService:
         logger.info("repository_created", repository_id=repository.id)
         return RepositoryResponse.model_validate(repository)
 
-    async def trigger_sync(self, repository_id: int) -> RepositorySyncResponse:
+    async def trigger_sync(
+        self,
+        repository_id: int,
+        sync_options: Optional[SyncOptionsBody] = None,
+    ) -> RepositorySyncResponse:
         repository = await self._session.get(Repository, repository_id)
         if repository is None:
             raise ValueError(f"Failed to trigger sync: Repository with ID {repository_id} not found")
+
+        # Persist document indexing preferences if provided
+        if sync_options:
+            if sync_options.index_md_files is not None:
+                repository.index_md_files = sync_options.index_md_files
+            if sync_options.index_txt_files is not None:
+                repository.index_txt_files = sync_options.index_txt_files
 
         repository.status = RepositoryStatusEnum.PENDING
         repository.last_synced_at = datetime.utcnow()

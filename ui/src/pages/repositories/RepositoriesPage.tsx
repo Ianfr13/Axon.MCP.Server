@@ -18,6 +18,7 @@ import {
   type RepositoryCreatePayload,
   type RepositoryResponse,
   type RepositoryUpdatePayload,
+  type SyncOptions,
 } from "../../services/api";
 import { enrichmentService } from "../../services/enrichmentService";
 import { RepositoryStatusEnum, SourceControlProviderEnum } from "../../types/enums";
@@ -67,6 +68,13 @@ export default function RepositoriesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
+  // Sync options dialog state
+  const [syncDialogRepo, setSyncDialogRepo] = useState<RepositoryResponse | null>(null);
+  const [syncOptions, setSyncOptions] = useState<SyncOptions>({
+    index_md_files: true,
+    index_txt_files: false,
+  });
+
   // New state for enhanced features
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [editingRepo, setEditingRepo] = useState<RepositoryResponse | null>(null);
@@ -74,7 +82,9 @@ export default function RepositoriesPage() {
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkOperationInProgress, setBulkOperationInProgress] = useState(false);
   const [deletingInProgress, setDeletingInProgress] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{ message: string; type: ToastTypeEnum } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: ToastTypeEnum } | null>(
+    null,
+  );
 
   useEffect(() => {
     void fetchRepositories();
@@ -82,7 +92,7 @@ export default function RepositoriesPage() {
 
   const activeRepositoryCount = useMemo(
     () => repositories.filter((repo) => repo.status !== RepositoryStatusEnum.failed).length,
-    [repositories]
+    [repositories],
   );
 
   const fetchRepositories = async () => {
@@ -100,11 +110,21 @@ export default function RepositoriesPage() {
     }
   };
 
-  const handleSyncClick = async (row: RepositoryResponse) => {
+  const handleSyncClick = (row: RepositoryResponse) => {
+    setSyncOptions({
+      index_md_files: row.index_md_files ?? true,
+      index_txt_files: row.index_txt_files ?? false,
+    });
+    setSyncDialogRepo(row);
+  };
+
+  const confirmSync = async () => {
+    if (!syncDialogRepo) return;
     try {
-      setSyncingId(row.id);
-      await syncRepository(row.id);
-      showToast(`Sync triggered for ${row.name}`, ToastTypeEnum.success);
+      setSyncingId(syncDialogRepo.id);
+      setSyncDialogRepo(null);
+      await syncRepository(syncDialogRepo.id, syncOptions);
+      showToast(`Sync triggered for ${syncDialogRepo.name}`, ToastTypeEnum.success);
       await fetchRepositories();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sync repository");
@@ -197,7 +217,7 @@ export default function RepositoriesPage() {
 
   const handleToggleSelection = (id: number) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((selectedId) => selectedId !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((selectedId) => selectedId !== id) : [...prev, id],
     );
   };
 
@@ -335,7 +355,10 @@ export default function RepositoriesPage() {
     try {
       setBulkOperationInProgress(true);
       const result = await bulkDeleteRepositories(selectedIds);
-      showToast(`Bulk delete completed: ${result.removed_count} repositories deleted`, ToastTypeEnum.success);
+      showToast(
+        `Bulk delete completed: ${result.removed_count} repositories deleted`,
+        ToastTypeEnum.success,
+      );
       setSelectedIds([]);
       setShowBulkDeleteConfirm(false);
       await fetchRepositories();
@@ -397,23 +420,39 @@ export default function RepositoriesPage() {
               </button>
             </>
           )}
-          <button className={styles.secondary_button} onClick={() => setShowGitLabDiscoveryModal(true)}>
+          <button
+            className={styles.secondary_button}
+            onClick={() => setShowGitLabDiscoveryModal(true)}
+          >
             Discover from GitLab
           </button>
-          <button className={styles.secondary_button} onClick={() => setShowAzureDevOpsDiscoveryModal(true)}>
+          <button
+            className={styles.secondary_button}
+            onClick={() => setShowAzureDevOpsDiscoveryModal(true)}
+          >
             Discover from Azure DevOps
           </button>
-          <button className={styles.secondary_button} onClick={() => setShowGitHubDiscoveryModal(true)}>
+          <button
+            className={styles.secondary_button}
+            onClick={() => setShowGitHubDiscoveryModal(true)}
+          >
             Discover from GitHub
           </button>
-          <button className={styles.secondary_button} onClick={() => {
-            setEditingRepo(null);
-            setFormState(initialFormState);
-            setShowForm((prev) => !prev);
-          }}>
+          <button
+            className={styles.secondary_button}
+            onClick={() => {
+              setEditingRepo(null);
+              setFormState(initialFormState);
+              setShowForm((prev) => !prev);
+            }}
+          >
             {showForm ? "Close" : "Add Repository"}
           </button>
-          <button className={styles.refresh_button} onClick={fetchRepositories} disabled={syncingId !== null}>
+          <button
+            className={styles.refresh_button}
+            onClick={fetchRepositories}
+            disabled={syncingId !== null}
+          >
             Refresh
           </button>
         </div>
@@ -430,8 +469,13 @@ export default function RepositoriesPage() {
 
       {showForm && (
         <section className={styles.form_panel}>
-          <h2 className={styles.form_title}>{editingRepo ? "Edit Repository" : "Create Repository"}</h2>
-          <form className={styles.repository_form} onSubmit={editingRepo ? handleUpdateRepository : handleCreateRepository}>
+          <h2 className={styles.form_title}>
+            {editingRepo ? "Edit Repository" : "Create Repository"}
+          </h2>
+          <form
+            className={styles.repository_form}
+            onSubmit={editingRepo ? handleUpdateRepository : handleCreateRepository}
+          >
             {!editingRepo && (
               <div className={styles.form_row}>
                 <label className={styles.form_label} htmlFor="provider">
@@ -480,7 +524,9 @@ export default function RepositoriesPage() {
                     name="azuredevops_project_name"
                     className={styles.form_input}
                     value={formState.azuredevops_project_name}
-                    onChange={(event) => handleInputChange("azuredevops_project_name", event.target.value)}
+                    onChange={(event) =>
+                      handleInputChange("azuredevops_project_name", event.target.value)
+                    }
                     placeholder="e.g. MyProject"
                     required={formState.provider === SourceControlProviderEnum.azuredevops}
                   />
@@ -494,7 +540,9 @@ export default function RepositoriesPage() {
                     name="azuredevops_repo_id"
                     className={styles.form_input}
                     value={formState.azuredevops_repo_id}
-                    onChange={(event) => handleInputChange("azuredevops_repo_id", event.target.value)}
+                    onChange={(event) =>
+                      handleInputChange("azuredevops_repo_id", event.target.value)
+                    }
                     placeholder="e.g. repo-guid-here"
                     required={formState.provider === SourceControlProviderEnum.azuredevops}
                   />
@@ -562,9 +610,7 @@ export default function RepositoriesPage() {
                 onChange={(event) => handleInputChange("path_with_namespace", event.target.value)}
                 placeholder="group/project"
               />
-              <p className={styles.field_hint}>
-                Defaults to the repository name when left blank.
-              </p>
+              <p className={styles.field_hint}>Defaults to the repository name when left blank.</p>
             </div>
 
             <div className={styles.form_row}>
@@ -597,11 +643,21 @@ export default function RepositoriesPage() {
             </div>
 
             <div className={styles.form_actions}>
-              <button className={styles.secondary_button} type="button" onClick={editingRepo ? cancelEdit : () => setShowForm(false)}>
+              <button
+                className={styles.secondary_button}
+                type="button"
+                onClick={editingRepo ? cancelEdit : () => setShowForm(false)}
+              >
                 Cancel
               </button>
               <button className={styles.primary_button} type="submit" disabled={creating}>
-                {creating ? (editingRepo ? "Updating..." : "Creating...") : (editingRepo ? "Update Repository" : "Create Repository")}
+                {creating
+                  ? editingRepo
+                    ? "Updating..."
+                    : "Creating..."
+                  : editingRepo
+                    ? "Update Repository"
+                    : "Create Repository"}
               </button>
             </div>
           </form>
@@ -649,12 +705,62 @@ export default function RepositoriesPage() {
       )}
 
       <ConfirmationModal
+        isOpen={syncDialogRepo !== null}
+        title="Sync Options"
+        message={
+          <div>
+            <p>
+              Configure document indexing for <strong>{syncDialogRepo?.name}</strong>:
+            </p>
+            <div
+              style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}
+            >
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={syncOptions.index_md_files ?? true}
+                  onChange={(e) =>
+                    setSyncOptions((prev) => ({ ...prev, index_md_files: e.target.checked }))
+                  }
+                />
+                Index .md files (Markdown)
+              </label>
+              <label
+                style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={syncOptions.index_txt_files ?? false}
+                  onChange={(e) =>
+                    setSyncOptions((prev) => ({ ...prev, index_txt_files: e.target.checked }))
+                  }
+                />
+                Index .txt files (Plain text)
+              </label>
+            </div>
+          </div>
+        }
+        confirmText="Start Sync"
+        variant="info"
+        onConfirm={confirmSync}
+        onCancel={() => setSyncDialogRepo(null)}
+        isLoading={syncingId !== null}
+      />
+
+      <ConfirmationModal
         isOpen={deletingRepo !== null}
         title="Delete Repository"
         message={
           <div>
-            <p>Are you sure you want to delete <strong>{deletingRepo?.name}</strong>?</p>
-            <p>This action cannot be undone. All associated data including files, symbols, and embeddings will be permanently deleted.</p>
+            <p>
+              Are you sure you want to delete <strong>{deletingRepo?.name}</strong>?
+            </p>
+            <p>
+              This action cannot be undone. All associated data including files, symbols, and
+              embeddings will be permanently deleted.
+            </p>
           </div>
         }
         confirmText="Delete Repository"
@@ -669,7 +775,9 @@ export default function RepositoriesPage() {
         title="Bulk Delete Repositories"
         message={
           <div>
-            <p>Are you sure you want to delete <strong>{selectedIds.length} repositories</strong>?</p>
+            <p>
+              Are you sure you want to delete <strong>{selectedIds.length} repositories</strong>?
+            </p>
             <p>This action cannot be undone. All associated data will be permanently deleted.</p>
           </div>
         }
@@ -709,5 +817,3 @@ export default function RepositoriesPage() {
     </div>
   );
 }
-
-

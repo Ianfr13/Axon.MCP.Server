@@ -37,7 +37,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export async function login(password: string): Promise<void> {
@@ -92,8 +92,17 @@ export type RepositoryResponse = {
     committed_date: string | null;
   } | null;
 
+  // Document indexing options
+  index_md_files: boolean;
+  index_txt_files: boolean;
+
   created_at: string;
   updated_at: string;
+};
+
+export type SyncOptions = {
+  index_md_files?: boolean;
+  index_txt_files?: boolean;
 };
 
 export type RepositoryUpdatePayload = Partial<RepositoryCreatePayload> & {
@@ -380,10 +389,12 @@ export async function getMetricsRaw(): Promise<string> {
   return res.data as string;
 }
 
-export async function listRepositories(params: {
-  skip?: number;
-  limit?: number;
-} = {}): Promise<PaginatedResult<RepositoryResponse>> {
+export async function listRepositories(
+  params: {
+    skip?: number;
+    limit?: number;
+  } = {},
+): Promise<PaginatedResult<RepositoryResponse>> {
   const res = await api.get<PaginatedResult<RepositoryResponse>>("/api/v1/repositories", {
     params,
   });
@@ -395,12 +406,17 @@ export async function getRepository(repositoryId: number): Promise<RepositoryRes
   return res.data;
 }
 
-export async function createRepository(payload: RepositoryCreatePayload): Promise<RepositoryResponse> {
+export async function createRepository(
+  payload: RepositoryCreatePayload,
+): Promise<RepositoryResponse> {
   const res = await api.post<RepositoryResponse>("/api/v1/repositories", payload);
   return res.data;
 }
 
-export async function updateRepository(repositoryId: number, payload: RepositoryUpdatePayload): Promise<RepositoryResponse> {
+export async function updateRepository(
+  repositoryId: number,
+  payload: RepositoryUpdatePayload,
+): Promise<RepositoryResponse> {
   try {
     const res = await api.put<RepositoryResponse>(`/api/v1/repositories/${repositoryId}`, payload);
     return res.data;
@@ -425,14 +441,24 @@ export async function deleteRepository(repositoryId: number): Promise<void> {
   }
 }
 
-export async function syncRepository(repositoryId: number): Promise<RepositorySyncResponse> {
-  const res = await api.post<RepositorySyncResponse>(`/api/v1/repositories/${repositoryId}/sync`);
+export async function syncRepository(
+  repositoryId: number,
+  options?: SyncOptions,
+): Promise<RepositorySyncResponse> {
+  const res = await api.post<RepositorySyncResponse>(
+    `/api/v1/repositories/${repositoryId}/sync`,
+    options ?? {},
+  );
   return res.data;
 }
 
-export async function getRepositoryStats(repositoryId: number): Promise<RepositoryStatsResponse | null> {
+export async function getRepositoryStats(
+  repositoryId: number,
+): Promise<RepositoryStatsResponse | null> {
   try {
-    const res = await api.get<RepositoryStatsResponse>(`/api/v1/repositories/${repositoryId}/stats`);
+    const res = await api.get<RepositoryStatsResponse>(
+      `/api/v1/repositories/${repositoryId}/stats`,
+    );
     return res.data;
   } catch (error) {
     if (isNotFoundError(error)) {
@@ -442,11 +468,14 @@ export async function getRepositoryStats(repositoryId: number): Promise<Reposito
   }
 }
 
-export async function getRepositorySyncHistory(repositoryId: number, params: { limit?: number; offset?: number } = {}): Promise<PaginatedResult<RepositorySyncAttempt>> {
+export async function getRepositorySyncHistory(
+  repositoryId: number,
+  params: { limit?: number; offset?: number } = {},
+): Promise<PaginatedResult<RepositorySyncAttempt>> {
   try {
     const res = await api.get<PaginatedResult<RepositorySyncAttempt>>(
       `/api/v1/repositories/${repositoryId}/sync-history`,
-      { params }
+      { params },
     );
     return res.data;
   } catch (error) {
@@ -457,9 +486,16 @@ export async function getRepositorySyncHistory(repositoryId: number, params: { l
   }
 }
 
-export async function bulkSyncRepositories(repositoryIds: number[]): Promise<{ jobs_created: number; job_ids: string[]; failed_count?: number; errors?: string[] }> {
+export async function bulkSyncRepositories(
+  repositoryIds: number[],
+): Promise<{ jobs_created: number; job_ids: string[]; failed_count?: number; errors?: string[] }> {
   try {
-    const res = await api.post<{ jobs_created: number; job_ids: string[]; failed_count: number; errors: string[] }>("/api/v1/repositories/bulk-sync", {
+    const res = await api.post<{
+      jobs_created: number;
+      job_ids: string[];
+      failed_count: number;
+      errors: string[];
+    }>("/api/v1/repositories/bulk-sync", {
       repository_ids: repositoryIds,
     });
     return res.data;
@@ -472,7 +508,9 @@ export async function bulkSyncRepositories(repositoryIds: number[]): Promise<{ j
   }
 }
 
-export async function bulkDeleteRepositories(repositoryIds: number[]): Promise<BulkRepositoryRemoveResponse> {
+export async function bulkDeleteRepositories(
+  repositoryIds: number[],
+): Promise<BulkRepositoryRemoveResponse> {
   // Note: Uses POST method instead of DELETE because bulk operations with request bodies
   // should use POST for better HTTP semantics and client/proxy compatibility
   return bulkRemoveRepositories(repositoryIds);
@@ -483,24 +521,36 @@ export async function discoverGitLabProjects(groupId: string): Promise<GitLabDis
   return res.data;
 }
 
-export async function discoverAzureDevOpsRepositories(projectName: string): Promise<AzureDevOpsDiscoveryResponse> {
-  const res = await api.get<AzureDevOpsDiscoveryResponse>(`/api/v1/repositories/discover/azuredevops/${projectName}`);
+export async function discoverAzureDevOpsRepositories(
+  projectName: string,
+): Promise<AzureDevOpsDiscoveryResponse> {
+  const res = await api.get<AzureDevOpsDiscoveryResponse>(
+    `/api/v1/repositories/discover/azuredevops/${projectName}`,
+  );
   return res.data;
 }
 
-export async function discoverGitHubRepositories(organization: string): Promise<GitHubDiscoveryResponse> {
-  const res = await api.get<GitHubDiscoveryResponse>(`/api/v1/repositories/discover/github/${organization}`);
+export async function discoverGitHubRepositories(
+  organization: string,
+): Promise<GitHubDiscoveryResponse> {
+  const res = await api.get<GitHubDiscoveryResponse>(
+    `/api/v1/repositories/discover/github/${organization}`,
+  );
   return res.data;
 }
 
-export async function bulkAddRepositories(repositories: RepositoryCreatePayload[]): Promise<BulkRepositoryAddResponse> {
+export async function bulkAddRepositories(
+  repositories: RepositoryCreatePayload[],
+): Promise<BulkRepositoryAddResponse> {
   const res = await api.post<BulkRepositoryAddResponse>("/api/v1/repositories/bulk-add", {
     repositories,
   });
   return res.data;
 }
 
-export async function bulkRemoveRepositories(repositoryIds: number[]): Promise<BulkRepositoryRemoveResponse> {
+export async function bulkRemoveRepositories(
+  repositoryIds: number[],
+): Promise<BulkRepositoryRemoveResponse> {
   const res = await api.post<BulkRepositoryRemoveResponse>("/api/v1/repositories/bulk-remove", {
     repository_ids: repositoryIds,
   });
@@ -526,7 +576,7 @@ export async function getSymbolWithRelations(symbolId: number): Promise<SymbolWi
 
 export async function listRepositoryFiles(
   repositoryId: number,
-  params: { path?: string; depth?: number } = {}
+  params: { path?: string; depth?: number } = {},
 ): Promise<FileNode[]> {
   const res = await api.get<FileNode[]>(`/api/v1/repositories/${repositoryId}/files`, { params });
   return res.data;
@@ -544,11 +594,14 @@ export async function getFileContent(fileId: number): Promise<FileContentRespons
 
 export async function listRepositoryCommits(
   repositoryId: number,
-  params: { limit?: number; offset?: number } = {}
+  params: { limit?: number; offset?: number } = {},
 ): Promise<PaginatedResult<CommitSummary>> {
-  const res = await api.get<PaginatedResult<CommitSummary>>(`/api/v1/repositories/${repositoryId}/commits`, {
-    params,
-  });
+  const res = await api.get<PaginatedResult<CommitSummary>>(
+    `/api/v1/repositories/${repositoryId}/commits`,
+    {
+      params,
+    },
+  );
   return res.data;
 }
 
@@ -557,7 +610,9 @@ export async function getCommit(commitId: number): Promise<CommitDetail> {
   return res.data;
 }
 
-export async function listJobs(params: { status?: JobStatusEnum; limit?: number; offset?: number } = {}): Promise<PaginatedResult<JobResponse>> {
+export async function listJobs(
+  params: { status?: JobStatusEnum; limit?: number; offset?: number } = {},
+): Promise<PaginatedResult<JobResponse>> {
   const res = await api.get<PaginatedResult<JobResponse>>("/api/v1/jobs", { params });
   return res.data;
 }
@@ -592,7 +647,9 @@ export type MCPToolResponse = {
   isError: boolean;
 };
 
-export async function testMCPSearchCode(params: Record<string, string | number>): Promise<MCPToolResponse> {
+export async function testMCPSearchCode(
+  params: Record<string, string | number>,
+): Promise<MCPToolResponse> {
   try {
     const res = await api.post<MCPToolResponse>("/api/v1/mcp/tools/search_code", params);
     return res.data;
@@ -607,7 +664,7 @@ export async function testMCPSearchCode(params: Record<string, string | number>)
 
 export async function testMCPGetSymbolContext(
   symbol_id: number,
-  include_relationships: boolean = true
+  include_relationships: boolean = true,
 ): Promise<MCPToolResponse> {
   try {
     const res = await api.post<MCPToolResponse>("/api/v1/mcp/tools/get_symbol_context", {
@@ -639,7 +696,10 @@ export async function testMCPListRepositories(limit: number = 20): Promise<MCPTo
   }
 }
 
-export async function callMCPTool(name: string, arguments_dict: Record<string, unknown>): Promise<MCPToolResponse> {
+export async function callMCPTool(
+  name: string,
+  arguments_dict: Record<string, unknown>,
+): Promise<MCPToolResponse> {
   try {
     const res = await api.post<MCPToolResponse>("/api/v1/mcp/tools/call", {
       name,
@@ -654,7 +714,6 @@ export async function callMCPTool(name: string, arguments_dict: Record<string, u
     throw error;
   }
 }
-
 
 // Statistics Types
 
@@ -772,7 +831,6 @@ export async function getRepositoryStatistics(repositoryId: number): Promise<Rep
   return res.data;
 }
 
-
 export async function getRepositorySamples(repositoryId: number): Promise<RepositorySamples> {
   const res = await api.get<RepositorySamples>(`/api/v1/repositories/${repositoryId}/samples`);
   return res.data;
@@ -845,26 +903,36 @@ export type QualityAnalysis = {
 // Analysis API Functions
 
 export async function getRepositoryServices(repositoryId: number): Promise<ServiceAnalysis[]> {
-  const res = await api.get<ServiceAnalysis[]>(`/api/v1/repositories/${repositoryId}/analysis/services`);
+  const res = await api.get<ServiceAnalysis[]>(
+    `/api/v1/repositories/${repositoryId}/analysis/services`,
+  );
   return res.data;
 }
 
 export async function getRepositoryEfEntities(repositoryId: number): Promise<EfEntityAnalysis[]> {
-  const res = await api.get<EfEntityAnalysis[]>(`/api/v1/repositories/${repositoryId}/analysis/ef-entities`);
+  const res = await api.get<EfEntityAnalysis[]>(
+    `/api/v1/repositories/${repositoryId}/analysis/ef-entities`,
+  );
   return res.data;
 }
 
 export async function getRepositoryIntegrations(repositoryId: number): Promise<IntegrationSummary> {
-  const res = await api.get<IntegrationSummary>(`/api/v1/repositories/${repositoryId}/analysis/integrations`);
+  const res = await api.get<IntegrationSummary>(
+    `/api/v1/repositories/${repositoryId}/analysis/integrations`,
+  );
   return res.data;
 }
 
 export async function getRepositoryConfigFindings(repositoryId: number): Promise<ConfigFinding[]> {
-  const res = await api.get<ConfigFinding[]>(`/api/v1/repositories/${repositoryId}/analysis/config-findings`);
+  const res = await api.get<ConfigFinding[]>(
+    `/api/v1/repositories/${repositoryId}/analysis/config-findings`,
+  );
   return res.data;
 }
 
 export async function getRepositoryQualityMetrics(repositoryId: number): Promise<QualityAnalysis> {
-  const res = await api.get<QualityAnalysis>(`/api/v1/repositories/${repositoryId}/analysis/quality-metrics`);
+  const res = await api.get<QualityAnalysis>(
+    `/api/v1/repositories/${repositoryId}/analysis/quality-metrics`,
+  );
   return res.data;
 }

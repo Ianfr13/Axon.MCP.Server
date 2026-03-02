@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy import (
+    Boolean,
     Column,
     Integer,
     String,
@@ -74,6 +75,10 @@ class Repository(Base):
     # Repository Aggregation (Axon v3.4)
     manifesto = Column(Text)  # REPOSITORY_MANIFESTO.md content
     ai_summary = Column(JSONB)  # Structured business overview
+
+    # Document indexing options (per-repo)
+    index_md_files = Column(Boolean, default=True, server_default="true", nullable=False)
+    index_txt_files = Column(Boolean, default=False, server_default="false", nullable=False)
 
     # Relationships
     commits = relationship("Commit", back_populates="repository", cascade="all, delete-orphan")
