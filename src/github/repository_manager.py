@@ -236,26 +236,38 @@ class GitHubRepositoryManager:
         total_size = 0
 
         for file_path in repo_path.rglob("*"):
-            if not file_path.is_file():
-                continue
+            try:
+                # Skip broken symlinks and inaccessible paths
+                if file_path.is_symlink() and not file_path.exists():
+                    continue
 
-            if any(exc in file_path.parts for exc in exclude_dirs):
-                continue
+                if not file_path.is_file():
+                    continue
 
-            if file_path.suffix.lower() not in extensions:
-                continue
+                if any(exc in file_path.parts for exc in exclude_dirs):
+                    continue
 
-            file_size = file_path.stat().st_size
-            if file_size > get_settings().parse_max_file_size_mb * 1024 * 1024:
+                if file_path.suffix.lower() not in extensions:
+                    continue
+
+                file_size = file_path.stat().st_size
+                if file_size > get_settings().parse_max_file_size_mb * 1024 * 1024:
+                    logger.warning(
+                        "file_too_large_skipped",
+                        file_path=str(file_path),
+                        size_mb=file_size / (1024 * 1024),
+                    )
+                    continue
+
+                total_size += file_size
+                files.append(file_path)
+            except (PermissionError, OSError) as e:
                 logger.warning(
-                    "file_too_large_skipped",
+                    "file_access_error_skipped",
                     file_path=str(file_path),
-                    size_mb=file_size / (1024 * 1024),
+                    error=str(e),
                 )
                 continue
-
-            total_size += file_size
-            files.append(file_path)
 
         logger.info(
             "file_tree_discovered",

@@ -480,22 +480,31 @@ class AzureDevOpsRepositoryManager:
         files = []
         try:
             for ext in extensions:
-                files.extend(repo_path.rglob(f"*{ext}"))
-            
+                try:
+                    files.extend(
+                        f for f in repo_path.rglob(f"*{ext}")
+                        if not (f.is_symlink() and not f.exists())
+                    )
+                except (PermissionError, OSError) as e:
+                    logger.warning("rglob_error_skipped", extension=ext, error=str(e))
+
             # Filter out common directories to ignore
             ignored_dirs = {
-                ".git", ".svn", ".hg", "node_modules", "__pycache__", 
+                ".git", ".svn", ".hg", "node_modules", "__pycache__",
                 ".pytest_cache", "venv", ".venv", "env", ".env",
-                "dist", "build", "target", "bin", "obj", ".vs", 
+                "dist", "build", "target", "bin", "obj", ".vs",
                 ".vscode", ".idea", "coverage", ".coverage",
                 "vendor", "packages", ".nuget"
             }
-            
+
             filtered_files = []
             for file_path in files:
-                # Check if any parent directory is in ignored list
-                if not any(part in ignored_dirs for part in file_path.parts):
-                    filtered_files.append(file_path)
+                try:
+                    # Check if any parent directory is in ignored list
+                    if not any(part in ignored_dirs for part in file_path.parts):
+                        filtered_files.append(file_path)
+                except (PermissionError, OSError):
+                    continue
             
             logger.info(
                 "file_tree_generated",
