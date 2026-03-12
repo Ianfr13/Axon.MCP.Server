@@ -436,7 +436,7 @@ class IncrementalSyncWorker:
             return LanguageEnum.VUE
         elif suffix == '.py':
             return LanguageEnum.PYTHON
-        elif suffix in ['.md', '.markdown']:
+        elif suffix in ['.md', '.markdown', '.mdx']:
             return LanguageEnum.MARKDOWN
         elif suffix in ['.sql', '.ddl']:
             return LanguageEnum.SQL

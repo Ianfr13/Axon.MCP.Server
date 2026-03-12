@@ -17,7 +17,7 @@ class MarkdownParser(BaseParser):
 
     def is_supported(self, file_path: Path) -> bool:
         """Check if file is a Markdown or plain text file."""
-        return file_path.suffix.lower() in ['.md', '.markdown', '.txt']
+        return file_path.suffix.lower() in ['.md', '.markdown', '.mdx', '.txt']
     
     def parse(self, code: str, file_path: Optional[str] = None) -> ParseResult:
         """

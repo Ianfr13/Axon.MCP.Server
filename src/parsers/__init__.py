@@ -70,7 +70,7 @@ class ParserFactory:
             return cls.get_parser(LanguageEnum.VUE)
         elif suffix == '.py':
             return cls.get_parser(LanguageEnum.PYTHON)
-        elif suffix in ['.md', '.markdown', '.txt']:
+        elif suffix in ['.md', '.markdown', '.mdx', '.txt']:
             return cls.get_parser(LanguageEnum.MARKDOWN)
         elif suffix in ['.sql', '.ddl']:
             return cls.get_parser(LanguageEnum.SQL)

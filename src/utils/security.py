@@ -28,7 +28,7 @@ class SecurityValidator:
     # Allowed file extensions for upload/processing
     ALLOWED_CODE_EXTENSIONS = {
         '.py', '.js', '.ts', '.tsx', '.jsx', '.cs', '.java', '.go',
-        '.vue', '.md', '.json', '.yaml', '.yml', '.xml', '.sql',
+        '.vue', '.md', '.mdx', '.json', '.yaml', '.yml', '.xml', '.sql',
         '.csproj', '.sln', '.txt', '.html', '.css', '.scss'
     }
     

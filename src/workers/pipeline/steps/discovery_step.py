@@ -44,7 +44,7 @@ class DiscoveryStep(PipelineStep):
         # Build custom extensions list based on per-repo doc indexing flags
         doc_extensions = []
         if getattr(repo, 'index_md_files', True):
-            doc_extensions.extend([".md", ".markdown"])
+            doc_extensions.extend([".md", ".markdown", ".mdx"])
         if getattr(repo, 'index_txt_files', False):
             doc_extensions.append(".txt")
 
